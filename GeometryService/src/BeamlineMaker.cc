@@ -460,7 +460,10 @@ namespace mu2e {
 
   void BeamlineMaker::BuildTSCollimators (const SimpleConfig& c, TransportSolenoid* ts) {
 
-    // Set collimators
+    // Set collimators, default version of the TS = 0
+
+    ts->_version = c.getInt("ts.version",0);
+
     double coll1HalfLength = c.getDouble("ts.coll1.halfLength");
     double coll3HalfLength = c.getDouble("ts.coll3.halfLength");
     double coll5HalfLength = c.getDouble("ts.coll5.halfLength");
@@ -538,6 +541,23 @@ namespace mu2e {
     coll51._material    = c.getString("ts.coll5.material1Name");
     coll52._material    = c.getString("ts.coll5.material2Name");
     coll53._material    = c.getString("ts.coll5.material2Name");
+
+    if (ts->_version == 5) {
+//-----------------------------------------------------------------------------
+// read input parameters
+//-----------------------------------------------------------------------------
+      ts->_par[0] = c.getDouble("ts.par[0]",0.);  // TS1 collimator rot angle
+      ts->_par[1] = c.getDouble("ts.par[1]",0.);  // TS1 collimator X-offset
+
+      ts->_par[10] = c.getDouble("ts.par[10]",0.);  // TS3U collimator rot angle
+      ts->_par[11] = c.getDouble("ts.par[11]",0.);  // TS3U collimator X-offset
+
+      ts->_par[20] = c.getDouble("ts.par[20]",0.);  // TS3D collimator rot angle
+      ts->_par[21] = c.getDouble("ts.par[21]",0.);  // TS3D collimator X-offset
+
+      ts->_par[30] = c.getDouble("ts.par[20]",0.);  // TS5 collimator rot angle
+      ts->_par[31] = c.getDouble("ts.par[21]",0.);  // TS5 collimator X-offset
+    }
 
   }
 

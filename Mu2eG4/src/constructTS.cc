@@ -1003,55 +1003,147 @@ namespace mu2e {
     // and a cylinder placed in TS1Vacuum)
 
     // the cone (which can be a tube/cylinder) inside the outer tube/cylinder
-    double coll1Param1[7] = { coll1.rIn1(), coll1.rIn3(),
-                              coll1.rIn2(), coll1.rIn3(),
-                              coll1.halfLength() - 2.*vdHalfLength,
-                              0.0, CLHEP::twopi };
+    // double coll1Param1[7] = { coll1.rIn1(), coll1.rIn3(),
+    //                            coll1.rIn2(), coll1.rIn3(),
+    //                            coll1.halfLength() - 2.*vdHalfLength+50.,
+    //                            0.0, CLHEP::twopi };
 
     G4Helper* _helper = &(*art::ServiceHandle<G4Helper>() );
-
+//-----------------------------------------------------------------------------
+// inner graphite cladding - later
+//-----------------------------------------------------------------------------
     CLHEP::Hep3Vector parentPos    = _helper->locateVolInfo("TS1Vacuum").centerInWorld;
 
-    nestCons( "Coll11",
-              coll1Param1,
-              findMaterialOrThrow( coll1.material1() ),
-              0,
-              coll1.getLocal(),
-              _helper->locateVolInfo("TS1Vacuum"),
-              0,
-              G4Color::Cyan(),
-	      "TSColl"
-              );
-
+    // nestCons( "Coll11",
+    //           coll1Param1,
+    //           findMaterialOrThrow( coll1.material1() ),
+    //           0,
+    //           coll1.getLocal(),
+    //           _helper->locateVolInfo("TS1Vacuum"),
+    //           0,
+    //           G4Color::Cyan(),
+    // 	      "TSColl"
+    //              );
+ 
+//-----------------------------------------------------------------------------
+// Coll12: the outer part of the collimator
+//-----------------------------------------------------------------------------
     double tmpRout = ts.innerRadius();
     if ( coll1.rIn4() > 1.0 ) tmpRout = coll1.rIn4();
 
     TubsParams coll1Param2 ( coll1.rIn3(),  tmpRout, coll1.halfLength()-2.*vdHalfLength);
+
+    // nestTubs( "Coll12",
+    //           coll1Param2,
+    //           findMaterialOrThrow( coll1.material2() ),
+    //           0,
+    //           coll1.getLocal(),
+    //           _helper->locateVolInfo("TS1Vacuum"),
+    //           0,
+    //           G4Color::Blue(),
+    // 	      "TSColl"
+    //           );
+//-----------------------------------------------------------------------------
+// P.Murat: this is where I start with the TS inner bore misalignment studies
+//-----------------------------------------------------------------------------
+    AntiLeakRegistry& reg = art::ServiceHandle<G4Helper>()->antiLeakRegistry();
+//-----------------------------------------------------------------------------
+// create tube
+//-----------------------------------------------------------------------------
+    VolumeInfo coll1Info;
+    coll1Info.name = "Coll12";
+
+    G4Tubs* coll1_mother = new G4Tubs("Coll12",
+				      0, tmpRout, coll1.halfLength()-2.*vdHalfLength,
+				      0.0, CLHEP::twopi );
+
+    G4Tubs* coll1_hole = new G4Tubs("Coll1Hole",
+				    0, coll1.rIn3(), coll1.halfLength()+50., // -2.*vdHalfLength,
+				    0.0, CLHEP::twopi );
+
+    G4RotationMatrix* coll1HoleRot = reg.add(G4RotationMatrix());
+
+    double coll1_hole_rot_angle_y = ts.par(0);                          // -5.;
+    coll1HoleRot->rotateY(coll1_hole_rot_angle_y*CLHEP::degree);
  
-    nestTubs( "Coll12",
-              coll1Param2,
-              findMaterialOrThrow( coll1.material2() ),
-              0,
-              coll1.getLocal(),
-              _helper->locateVolInfo("TS1Vacuum"),
-              0,
-              G4Color::Blue(),
-	      "TSColl"
-              );
+    G4ThreeVector coll1_hole_displacement(ts.par(1),0.,0.);             // was 20. 
+
+    coll1Info.solid = new G4SubtractionSolid(coll1Info.name,
+					     coll1_mother,
+					     coll1_hole,
+					     coll1HoleRot,
+					     coll1_hole_displacement);
+
+    G4RotationMatrix* coll1Rot = reg.add(G4RotationMatrix());
+
+    double coll1_rot_angle_z = 0.;
+    coll1Rot->rotateZ(coll1_rot_angle_z*CLHEP::degree);
+
+    finishNesting(coll1Info,
+                  findMaterialOrThrow( coll1.material2() ),  // this is coll2 , it is not rotated
+                  coll1Rot,
+                  coll1.getLocal(),
+                  _helper->locateVolInfo("TS1Vacuum").logical,
+                  0,
+                  G4Color::Gray(),
+		  "TSColl");
+
+					// graphite inner cladding 
+
+                               // coll1.rIn1(), coll1.rIn3(),
+                               // coll1.rIn2(), coll1.rIn3(),
+                               // coll1.halfLength() - 2.*vdHalfLength,
+                               // 0.0, CLHEP::twopi 
+
+    VolumeInfo coll11Info;
+    coll11Info.name = "Coll11";
+
+    G4Tubs* coll11_tube = new G4Tubs("Coll11",
+				     coll1.rIn2(),coll1.rIn3(), coll1.halfLength()+50., // -2.*vdHalfLength,
+				     0.0, CLHEP::twopi );
+
+    coll11Info.solid = new G4IntersectionSolid(coll1Info.name,
+					       coll1_mother,
+					       coll11_tube,
+					       coll1HoleRot,
+					       coll1_hole_displacement);
+
+    finishNesting(coll11Info,
+                  findMaterialOrThrow( coll1.material1() ),  // graphite
+                  nullptr,                     // already rotated              coll1Rot,
+                  coll1.getLocal(),
+                  _helper->locateVolInfo("TS1Vacuum").logical,
+                  0,
+                  G4Color::Cyan(),
+		  "TSColl");
+
+    // nestCons( coll1Info,
+    // 	      coll1Param1,
+    // 	      findMaterialOrThrow( coll1.material1() ),
+    // 	      coll1HoleRot, // 0,
+    // 	      coll1.getLocal(),
+    // 	      _helper->locateVolInfo("TS1Vacuum"),
+    // 	      0,
+    // 	      G4Color::Cyan(),
+    //  	      "TSColl"
+    // 	      );
+
 
     if ( coll1.rIn4() > 1.0 && coll1.rOu4() > coll1.rIn4() ) {
-      // Make the sheath
+//-----------------------------------------------------------------------------
+// Make the sheath
+//-----------------------------------------------------------------------------
       TubsParams coll1Param3 ( coll1.rIn4(),  coll1.rOu4(), coll1.halfLength()-2.*vdHalfLength);
       nestTubs( "Coll13",
-		coll1Param3,
-		findMaterialOrThrow( coll1.material3() ),
-		0,
-		coll1.getLocal(),
-		_helper->locateVolInfo("TS1Vacuum"),
-		0,
-		G4Color::Blue(),
-		"TSColl"
-		);
+     		coll1Param3,
+     		findMaterialOrThrow( coll1.material3() ),
+     		nullptr, 
+     		coll1.getLocal(),
+     		_helper->locateVolInfo("TS1Vacuum"),
+     		0,
+     		G4Color::Blue(),
+     		"TSColl"
+     		);
 
     } // end of adding sheath to Coll1
 
@@ -1061,21 +1153,20 @@ namespace mu2e {
       cout << __func__ << " Coll1 local offset   : " << ts.getColl1().getLocal() << endl;
       cout << __func__ << " TS1  Rotation        : " << ts1in->getRotation()     << endl;
     }
-
-    // Place collimator 3
-
-    // Collimator 3 has peculiar shape, described in doc_db 853.
-    // Construct this shape using boolean functions on solids
-
-    // First, construct hole; make it slightly longer than any collimator
+//-----------------------------------------------------------------------------
+// Place collimator 3
+// Collimator 3 has peculiar shape, described in doc_db 853.
+// Construct this shape using boolean functions on solids
+// First, construct hole; make it slightly longer than any collimator
+//-----------------------------------------------------------------------------
     double hDz = coll31.halfLength();
     if( hDz<coll32.halfLength() ) hDz=coll32.halfLength();
     // Hole is the intersection of box and tube
     G4Box* coll3_hole_box = new G4Box("coll3_hole_box",
-                                      coll31.holeRadius()+5.0,coll31.holeHalfHeight(),hDz+1.0);
+                                      coll31.holeRadius()+5.0,coll31.holeHalfHeight(),hDz+10.0);
     // make the tube longer than the box to avoid overlapping surfaces 
     G4Tubs* coll3_hole_circle = new G4Tubs("coll3_hole_circle",
-                                           0.0,coll31.holeRadius(),hDz+2.0,
+                                           0.0,coll31.holeRadius(),hDz+10.0,
                                            0.0, CLHEP::twopi );
     G4IntersectionSolid* coll3_hole = new G4IntersectionSolid("coll3_hole",
 							      coll3_hole_box,
@@ -1101,20 +1192,33 @@ namespace mu2e {
                                        0, ts.innerRadius(), coll32.halfLength()-2.*vdHalfLength,
                                        0.0, CLHEP::twopi );
 
+//-----------------------------------------------------------------------------
+// add displacement of the TS3U hole
+//-----------------------------------------------------------------------------
+    G4RotationMatrix* coll31HoleRot = reg.add(G4RotationMatrix());
+
+    double coll31_hole_rot_angle_y = ts.par(10);
+    coll31HoleRot->rotateY(coll31_hole_rot_angle_y*CLHEP::degree);
+
     coll31Info.solid = new G4SubtractionSolid(coll31Info.name,
                                               coll31_mother,
                                               coll3_hole,
-                                              0,
+                                              coll31HoleRot, // 0,
                                               G4ThreeVector(0,coll31.holeDisplacement(),0));
+//-----------------------------------------------------------------------------
+// add displacement of the TS3D hole
+//-----------------------------------------------------------------------------
+    G4RotationMatrix* coll32HoleRot = reg.add(G4RotationMatrix());
 
+    double coll32_hole_rot_angle_y = ts.par(20);
+    coll32HoleRot->rotateY(coll32_hole_rot_angle_y*CLHEP::degree);
+    
     coll32Info.solid = new G4SubtractionSolid(coll32Info.name,
                                               coll32_mother,
                                               coll3_hole,
-                                              0,
+                                              coll32HoleRot, // 0,
                                               G4ThreeVector(0,coll32.holeDisplacement(),0));
 
-    // Now use finishNesting to place collimators 31 and 32
-    AntiLeakRegistry& reg = art::ServiceHandle<G4Helper>()->antiLeakRegistry();
 
     G4RotationMatrix* coll31Rot = reg.add(G4RotationMatrix());
     G4RotationMatrix* coll32Rot = reg.add(G4RotationMatrix());
@@ -1222,9 +1326,9 @@ namespace mu2e {
       cout << __func__ << " Coll32 local offset : " << coll32.getLocal() << endl;
       cout << __func__ << " TS3  Rotation       : " << ts3in->getRotation() << endl;
     }
-
-    // Place collimator 5
-
+//-----------------------------------------------------------------------------
+// Place collimator 5
+//-----------------------------------------------------------------------------
     if ( verbosityLevel > 0) {
       cout << __func__ << " TS5  OffsetInMu2e  : " << ts5in->getGlobal()   << endl;
       cout << __func__ << " Coll5 local offset : " << coll51.getLocal()    << endl;
@@ -1242,18 +1346,57 @@ namespace mu2e {
     }
 
     // the most outer part (with Virtual Detectors on the outer surfaces of the Coll5)
-    TubsParams coll5Param1 ( coll51.rIn(),  coll51.rOut() - 2.*vdHalfLength, coll51.halfLength()-2.*vdHalfLength);
-    nestTubs( "Coll51",
-              coll5Param1,
-              findMaterialOrThrow( coll51.material() ),
-              0,
-              coll51.getLocal(),
-              _helper->locateVolInfo("TS5Vacuum"),
-              0,
-              G4Color::Blue(),
-	      "TSColl"
-              );
+    // Coll51 - the collimator itself, made of polyethylene, the inner part of Coll5 with the hole
 
+    // TubsParams coll5Param1 ( coll51.rIn(),  coll51.rOut() - 2.*vdHalfLength, coll51.halfLength()-2.*vdHalfLength);
+    // nestTubs( "Coll51",
+    //           coll5Param1,
+    //           findMaterialOrThrow( coll51.material() ),
+    //           0,
+    //           coll51.getLocal(),
+    //           _helper->locateVolInfo("TS5Vacuum"),
+    //           0,
+    //           G4Color::Blue(),
+    // 	      "TSColl"
+    //           );
+
+    VolumeInfo coll51Info;
+    coll1Info.name = "Coll51";
+
+    G4Tubs* coll51_mother = new G4Tubs("Coll51",
+				       0, coll51.rOut() - 2.*vdHalfLength,    // radii
+				       coll51.halfLength()-2.*vdHalfLength,   // half-length in Z
+				       0.0, CLHEP::twopi );                   // phi range
+
+    G4Tubs* coll5_hole = new G4Tubs("Coll5Hole",
+				    0, coll51.rIn(), coll51.halfLength()+20.,   //
+				    0.0, CLHEP::twopi );
+
+    G4RotationMatrix* coll5HoleRot = reg.add(G4RotationMatrix());
+
+    double coll5_hole_rot_angle_y = ts.par(30);
+    coll5HoleRot->rotateY(coll5_hole_rot_angle_y*CLHEP::degree);
+ 
+    G4ThreeVector coll5_hole_displacement(ts.par(31),0.,0.);
+
+    coll51Info.solid = new G4SubtractionSolid(coll51Info.name,
+					      coll51_mother,
+					      coll5_hole,
+					      coll5HoleRot,
+					      coll5_hole_displacement);
+
+    G4RotationMatrix* coll5Rot         = reg.add(G4RotationMatrix());
+    double           coll5_rot_angle_z = 0.;
+    coll5Rot->rotateZ(coll5_rot_angle_z*CLHEP::degree);
+
+    finishNesting(coll51Info,
+                  findMaterialOrThrow( coll51.material() ),  // this is coll5 , it is not rotated
+                  coll5Rot,
+                  coll51.getLocal(),
+                  _helper->locateVolInfo("TS5Vacuum").logical,
+                  0,
+                  G4Color::Blue(),
+		  "TSColl");
 
     TubsParams coll5Param2 ( coll52.rIn(),  coll52.rOut(), coll52.halfLength()-2.*vdHalfLength);
     nestTubs( "Coll52",
@@ -1266,7 +1409,9 @@ namespace mu2e {
               G4Color::Blue(),
 	      "TSColl"
               );
-    
+//-----------------------------------------------------------------------------
+//
+//-----------------------------------------------------------------------------
     TubsParams coll5Param3 ( coll53.rIn(),  coll53.rOut(), coll53.halfLength()-2.*vdHalfLength);
     
     // Build Coll53 flange outside the TS5Vacuum
@@ -2171,7 +2316,9 @@ namespace mu2e {
     }
 
     if (is_pbarTS1Out) {
-
+//-----------------------------------------------------------------------------
+// TS1 proton absorber wedge
+//-----------------------------------------------------------------------------
       // Get VDs
       GeomHandle<VirtualDetector> vdg;
       double vdHalfLength = vdg->getHalfLength()*CLHEP::mm;
@@ -2187,6 +2334,7 @@ namespace mu2e {
       double pbarTS1OutParams[5]  = { pbarTS1OutrIn, coll1.rIn1(), pbarTS1OutHalfLength,
 				      pbarTS1OutphiBegin*CLHEP::degree, pbarTS1OutphiDelta*CLHEP::degree };
       double pbarTS1OutPosz       = config.getDouble("pbar.coll1Out.z", -3144.0);
+
       if ( verbosityLevel > 0 ) {
 	std::cout << "Pbar absorber at TS1 coll1 near exit halfLength : " << pbarTS1OutHalfLength << " rIn " << pbarTS1OutrIn 
 		  << " pbarTS1OutPosz " << pbarTS1OutPosz << " phiBegin " << pbarTS1OutphiBegin << " dPhi " << pbarTS1OutphiDelta << std::endl;
@@ -2195,13 +2343,38 @@ namespace mu2e {
       CLHEP::Hep3Vector pbarTS1OutPos = coll1.getLocal();
       //      CLHEP::Hep3Vector TS1VacuumPos = ts->getTSCryo<StraightSection>(TransportSolenoid::TSRegion::TS1,TransportSolenoid::TSRadialPart::OUT)->getGlobal()-_hallOriginInMu2e;
       //      pbarTS1OutPos.setZ( pbarTS1Outz - TS1VacuumPos.z() );
-      pbarTS1OutPos.setZ( pbarTS1OutPos.z() + (pbarTS1OutPosz-(-4044)) - coll1.halfLength() );
+
+      pbarTS1OutPos.setZ( pbarTS1OutPos.z() + (pbarTS1OutPosz-(-4044)) - coll1.halfLength()-20 );
+
+      AntiLeakRegistry& reg = art::ServiceHandle<G4Helper>()->antiLeakRegistry();
+      G4RotationMatrix* coll1HoleRot = reg.add(G4RotationMatrix());
+      G4RotationMatrix* rinv         = reg.add(G4RotationMatrix());
+      G4RotationMatrix* r2           = reg.add(G4RotationMatrix());
+
+      double coll1_hole_rot_angle_y = -5.;
+      coll1HoleRot->rotateY(coll1_hole_rot_angle_y*CLHEP::degree);
+
+      *rinv = coll1HoleRot->inverse();
+      r2->rotateY(-coll1_hole_rot_angle_y*CLHEP::degree);
+
+      G4ThreeVector coll1_hole_displacement(20.,0.,0.);
+
+      G4ThreeVector x = pbarTS1OutPos;
+      x.transform(*coll1HoleRot);
+
+      G4ThreeVector x2 = pbarTS1OutPos;
+      x2.transform(*r2);
+
+      x2 = x2+coll1_hole_displacement;
 
       nestTubs( "PbarAbsTS1Out",
 		pbarTS1OutParams,
 		findMaterialOrThrow(pbarTS1OutMaterial),
-		0,
-		pbarTS1OutPos,
+		// nullptr, 
+		// rinv, 
+		coll1HoleRot, // 0,
+		// pbarTS1OutPos, 
+		x2, 
 		_helper->locateVolInfo("TS1Vacuum"),
 		0,
 		G4Color::Yellow(),

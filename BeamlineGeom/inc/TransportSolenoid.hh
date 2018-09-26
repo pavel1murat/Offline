@@ -30,12 +30,18 @@ namespace mu2e {
 
   public:
     TransportSolenoid() :
-      _rTorus(0.), _rVac(0.)
+      _rTorus(0.), _rVac(0.), _version(0)
     {
       // Reserve number of coils
-      for ( unsigned iTS = TSRegion::TS1 ; iTS <= TSRegion::TS5 ; ++iTS ) 
+      for ( unsigned iTS = TSRegion::TS1 ; iTS <= TSRegion::TS5 ; ++iTS ) {
         _coilMap[ (TSRegion)iTS ].reserve( getNCoils( (TSRegion)iTS ) );
+      }
+      // clear parameters for geomentry study
+      for (int i=0; i<_nPar; i++) _par[i] = 0;
     }
+
+    int    version()      const { return _version; }
+    double par    (int i) const { return _par[i];  }
     
     // use compiler-generated copy c'tor, copy assignment, and d'tor
 
@@ -267,7 +273,14 @@ namespace mu2e {
     // Poly-lining map
     std::map<TSRegion::enum_type,std::unique_ptr<TorusSection>> _polyLiningMap;
 
-    PbarWindow _pbarWindow;   
+    PbarWindow _pbarWindow;
+    
+    // 2018-09-25 P.Murat : parameters for geometry studies. 
+    // want implementation to be generic and suitable for variaous studies
+
+    enum { _nPar = 100 } ;
+    int     _version;
+    double  _par[_nPar];
 
   };
 
