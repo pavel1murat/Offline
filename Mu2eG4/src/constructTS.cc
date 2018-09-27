@@ -2351,13 +2351,13 @@ namespace mu2e {
       G4RotationMatrix* rinv         = reg.add(G4RotationMatrix());
       G4RotationMatrix* r2           = reg.add(G4RotationMatrix());
 
-      double coll1_hole_rot_angle_y = -5.;
+      double coll1_hole_rot_angle_y = ts.par(0);                              // -5.;
       coll1HoleRot->rotateY(coll1_hole_rot_angle_y*CLHEP::degree);
 
       *rinv = coll1HoleRot->inverse();
       r2->rotateY(-coll1_hole_rot_angle_y*CLHEP::degree);
 
-      G4ThreeVector coll1_hole_displacement(20.,0.,0.);
+      G4ThreeVector coll1_hole_displacement(ts.par(1),0.,0.);
 
       G4ThreeVector x = pbarTS1OutPos;
       x.transform(*coll1HoleRot);

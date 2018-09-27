@@ -555,8 +555,8 @@ namespace mu2e {
       ts->_par[20] = c.getDouble("ts.par[20]",0.);  // TS3D collimator rot angle
       ts->_par[21] = c.getDouble("ts.par[21]",0.);  // TS3D collimator X-offset
 
-      ts->_par[30] = c.getDouble("ts.par[20]",0.);  // TS5 collimator rot angle
-      ts->_par[31] = c.getDouble("ts.par[21]",0.);  // TS5 collimator X-offset
+      ts->_par[30] = c.getDouble("ts.par[30]",0.);  // TS5 collimator rot angle
+      ts->_par[31] = c.getDouble("ts.par[31]",0.);  // TS5 collimator X-offset
     }
 
   }
