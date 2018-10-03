@@ -1368,9 +1368,36 @@ namespace mu2e {
 				       coll51.halfLength()-2.*vdHalfLength,   // half-length in Z
 				       0.0, CLHEP::twopi );                   // phi range
 
-    G4Tubs* coll5_hole = new G4Tubs("Coll5Hole",
-				    0, coll51.rIn(), coll51.halfLength()+20.,   //
-				    0.0, CLHEP::twopi );
+//-----------------------------------------------------------------------------
+// non-round holes to be used only with zero displacements - it is a different study !
+//-----------------------------------------------------------------------------
+    G4VSolid* coll5_hole;
+
+    double ts5_hole_half_height = ts.par(41);
+
+    if (ts5_hole_half_height == 0) {
+      /* G4Tubs* */ coll5_hole = new G4Tubs("Coll5Hole",
+					    0, coll51.rIn(), coll51.halfLength()+20.,   //
+					    0.0, CLHEP::twopi );
+    }
+    else {
+      // non-round hole, make the tube longer than the box to avoid overlapping surfaces 
+
+      G4Tubs* coll5_hole_tube = new G4Tubs("coll5_hole_tube",
+					 0.0,coll51.rIn(),coll51.halfLength()+20.,
+					 0.0, CLHEP::twopi );
+
+      G4Box*  coll5_hole_box  = new G4Box ("coll5_hole_box",
+					 coll51.rIn()+5.0,ts5_hole_half_height,coll51.halfLength()+10.);
+    
+    // G4IntersectionSolid* coll5_hole = new G4IntersectionSolid("Coll5Hole",
+    // 							      coll5_hole_box,
+    // 							      coll5_hole_tube);
+
+      /* G4VSolid* */ coll5_hole = new G4IntersectionSolid("Coll5Hole",
+							   coll5_hole_box,
+							   coll5_hole_tube);
+    }
 
     G4RotationMatrix* coll5HoleRot = reg.add(G4RotationMatrix());
 

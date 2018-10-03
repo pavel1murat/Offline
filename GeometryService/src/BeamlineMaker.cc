@@ -544,7 +544,7 @@ namespace mu2e {
 
     if (ts->_version == 5) {
 //-----------------------------------------------------------------------------
-// read input parameters
+// read input parameters - have all of them zero by default
 //-----------------------------------------------------------------------------
       ts->_par[0] = c.getDouble("ts.par[0]",0.);  // TS1 collimator rot angle
       ts->_par[1] = c.getDouble("ts.par[1]",0.);  // TS1 collimator X-offset
@@ -557,6 +557,8 @@ namespace mu2e {
 
       ts->_par[30] = c.getDouble("ts.par[30]",0.);  // TS5 collimator rot angle
       ts->_par[31] = c.getDouble("ts.par[31]",0.);  // TS5 collimator X-offset
+
+      ts->_par[41] = c.getDouble("ts.par[41]",0.);  // TS5 half-height for non-round hole
     }
 
   }
