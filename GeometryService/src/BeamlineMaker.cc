@@ -559,6 +559,7 @@ namespace mu2e {
       ts->_par[31] = c.getDouble("ts.par[31]",0.);  // TS5 collimator X-offset
 
       ts->_par[41] = c.getDouble("ts.par[41]",0.);  // TS5 half-height for non-round hole
+      ts->_par[51] = c.getDouble("ts.par[51]",0.);  // TS1 half-height for non-round hole
     }
 
   }

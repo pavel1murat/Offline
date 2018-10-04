@@ -1057,9 +1057,30 @@ namespace mu2e {
 				      0, tmpRout, coll1.halfLength()-2.*vdHalfLength,
 				      0.0, CLHEP::twopi );
 
-    G4Tubs* coll1_hole = new G4Tubs("Coll1Hole",
-				    0, coll1.rIn3(), coll1.halfLength()+50., // -2.*vdHalfLength,
-				    0.0, CLHEP::twopi );
+    G4VSolid* coll1_hole;
+
+    double ts1_hole_half_height = ts.par(51);
+
+    if (ts1_hole_half_height == 0) {
+      coll1_hole = new G4Tubs("Coll1Hole",
+			      0, coll1.rIn3(), coll1.halfLength()+50., // -2.*vdHalfLength,
+			      0.0, CLHEP::twopi );
+    }
+    else {
+      // non-round hole, make the tube longer than the box to avoid overlapping surfaces 
+
+      G4Tubs* coll1_hole_tube = new G4Tubs("coll1_hole_tube",
+					 0.0,coll1.rIn3(),coll1.halfLength()+20.,
+					 0.0, CLHEP::twopi );
+
+      G4Box*  coll1_hole_box  = new G4Box ("coll1_hole_box",
+					   coll1.rIn3()+5.0,ts1_hole_half_height,coll1.halfLength()+10.);
+    
+      coll1_hole = new G4IntersectionSolid("Coll1Hole",
+					   coll1_hole_box,
+					   coll1_hole_tube);
+    }
+
 
     G4RotationMatrix* coll1HoleRot = reg.add(G4RotationMatrix());
 
@@ -1087,20 +1108,42 @@ namespace mu2e {
                   0,
                   G4Color::Gray(),
 		  "TSColl");
-
-					// graphite inner cladding 
-
+//-----------------------------------------------------------------------------
+// graphite inner cladding 
+//-----------------------------------------------------------------------------
                                // coll1.rIn1(), coll1.rIn3(),
                                // coll1.rIn2(), coll1.rIn3(),
                                // coll1.halfLength() - 2.*vdHalfLength,
                                // 0.0, CLHEP::twopi 
-
     VolumeInfo coll11Info;
     coll11Info.name = "Coll11";
 
-    G4Tubs* coll11_tube = new G4Tubs("Coll11",
-				     coll1.rIn2(),coll1.rIn3(), coll1.halfLength()+50., // -2.*vdHalfLength,
-				     0.0, CLHEP::twopi );
+    G4VSolid* coll11_tube;
+
+    if (ts1_hole_half_height == 0) {
+      coll11_tube = new G4Tubs("Coll11",
+			       coll1.rIn2(),coll1.rIn3(), coll1.halfLength()+50., // -2.*vdHalfLength,
+			       0.0, CLHEP::twopi );
+    }
+    else {
+      // non-round hole, make the graphite part also non-round 
+      // make the tube longer than the box to avoid overlapping surfaces 
+
+      G4Tubs* coll11_hole_tube = new G4Tubs("coll11_inner_tube",
+					    0.0,coll1.rIn2(),coll1.halfLength()+20.,
+					    0.0, CLHEP::twopi );
+
+      double ts1_graphite_thickness = coll1.rIn3()-coll1.rIn2();
+      
+      G4Box*  coll11_hole_box  = new G4Box ("coll11_inner_box",
+					    coll1.rIn2()+5.0,ts1_hole_half_height-ts1_graphite_thickness,coll1.halfLength()+10.);
+    
+      G4VSolid* coll11_inner = new G4IntersectionSolid("Coll11Inner",
+						       coll11_hole_box,
+						       coll11_hole_tube);
+
+      coll11_tube = new G4SubtractionSolid("Coll11",coll1_hole,coll11_inner);
+    }
 
     coll11Info.solid = new G4IntersectionSolid(coll1Info.name,
 					       coll1_mother,
