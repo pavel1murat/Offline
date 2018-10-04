@@ -1404,7 +1404,7 @@ namespace mu2e {
     //           );
 
     VolumeInfo coll51Info;
-    coll1Info.name = "Coll51";
+    coll51Info.name = "Coll51";
 
     G4Tubs* coll51_mother = new G4Tubs("Coll51",
 				       0, coll51.rOut() - 2.*vdHalfLength,    // radii
