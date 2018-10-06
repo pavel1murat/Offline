@@ -1061,7 +1061,7 @@ namespace mu2e {
 
     double ts1_hole_half_height = ts.par(51);
 
-    if (ts1_hole_half_height == 0) {
+    if (ts1_hole_half_height <= 0) {
       coll1_hole = new G4Tubs("Coll1Hole",
 			      0, coll1.rIn3(), coll1.halfLength()+50., // -2.*vdHalfLength,
 			      0.0, CLHEP::twopi );
@@ -1120,7 +1120,7 @@ namespace mu2e {
 
     G4VSolid* coll11_tube;
 
-    if (ts1_hole_half_height == 0) {
+    if (ts1_hole_half_height <= 0) {
       coll11_tube = new G4Tubs("Coll11",
 			       coll1.rIn2(),coll1.rIn3(), coll1.halfLength()+50., // -2.*vdHalfLength,
 			       0.0, CLHEP::twopi );
@@ -1418,7 +1418,7 @@ namespace mu2e {
 
     double ts5_hole_half_height = ts.par(41);
 
-    if (ts5_hole_half_height == 0) {
+    if (ts5_hole_half_height <= 0) {
       /* G4Tubs* */ coll5_hole = new G4Tubs("Coll5Hole",
 					    0, coll51.rIn(), coll51.halfLength()+20.,   //
 					    0.0, CLHEP::twopi );
