@@ -209,8 +209,8 @@ CalPatRec : { @table::CalPatRec
 	minT0DOCA                               : -0.2               # 
 	t0window                                : 2.5
 	dtOffset                                : @local::TrackCaloMatching.DtOffset
-	# did Dave mean that? 
-	useTrkCaloHit                           : true
+# check what turning this off does # Giani: did Dave mean true? 
+	useTrkCaloHit                           : false   # true
 	strawHitT0Weight                        : 1
 	caloHitT0Weight                         : 10
 	caloHitError				: 15.0 # mm 
