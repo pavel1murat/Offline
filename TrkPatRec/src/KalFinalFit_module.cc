@@ -281,6 +281,7 @@ namespace mu2e
 	      << " covariance " << _result.krep->seedTrajectory()->parameters()->covariance()
 	      << " NDOF = " << _result.krep->nDof()
 	      << " Final Fit status " << _result.krep->fitStatus()  << endl;
+	    _kfit.printUtils()->printTrack(&event,_result.krep,"banner+data+hits","KalFinalFit::produce after makeTrack");
 	  }
 	}
 	// if successfull, try to add missing hits
@@ -288,7 +289,7 @@ namespace mu2e
 	    // first, add back the hits on this track
 	  //	  _result.nunweediter = 0;
 	  _kfit.unweedHits(_result,_maxaddchi);
-	  if (_debug > 0) _kfit.printUtils()->printTrack(&event,_result.krep,"banner+data+hits","CalTrkFit::produce after unweedHits");
+	  if (_debug > 0) _kfit.printUtils()->printTrack(&event,_result.krep,"banner+data+hits","KalFinalFitFit::produce after unweedHits");
 
 	  if (_cprmode){
 	    findMissingHits_cpr(srep,_result);
@@ -320,19 +321,22 @@ namespace mu2e
 
 	  if(_result.missingHits.size() > 0){
 	    _kfit.addHits(srep,detmodel,_result,_maxaddchi);
-	  }else if (_cprmode){
-	    int last_iteration  = -1;
-	    _kfit.fitIteration(detmodel,_result,last_iteration);
 	  }
+//-----------------------------------------------------------------------------
+// the commented out part didn't make any sense anyway
+//-----------------------------------------------------------------------------
+	  // else if (_cprmode){
+	  //   int last_iteration  = -1;
+	  //   _kfit.fitIteration(detmodel,_result,last_iteration);
+	  // }
 	  if(_debug > 1)
 	    cout << "AddHits Fit result " << _result.krep->fitStatus()
 	    << " NDOF = " << _result.krep->nDof() << endl;
-	  
 //-----------------------------------------------------------------------------
 // and weed hits again to insure that addHits doesn't add junk
 //-----------------------------------------------------------------------------
 	  int last_iteration  = -1;
-	  if (_cprmode) _kfit.weedHits(_result,last_iteration);
+	  if (_cprmode && _result.krep->fitStatus().success()) _kfit.weedHits(_result,last_iteration);
 	}
 	// put successful fits into the event
 	if(_result.krep != 0 && (_result.krep->fitStatus().success() || _saveall)){
