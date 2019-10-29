@@ -63,6 +63,29 @@ namespace mu2e {
     };
 
     //================================================================
+    //For resampling photon conversions
+    struct ConversionPointF {
+      float x;
+      float y;
+      float z;
+      float time;
+      float px;
+      float py;
+      float pz;
+      float weight;
+      float genEnergy;
+      char  mat[40];
+
+      ConversionPointF() : x(), y(), z(), time(), px(), py(), pz(), weight(), genEnergy(), mat() {}
+
+      static const char *branchDescription() {
+        return "x/F:y/F:z/F:time/F:px/F:py/F:pz/F:weight/F:genEnergy/F:mat/C";
+      }
+
+      static unsigned numBranchLeaves() { return 10; }
+    };
+
+    //================================================================
 
   } // IO
 } // mu2e

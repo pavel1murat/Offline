@@ -230,7 +230,9 @@ namespace mu2e {
 	    const std::string& materialName = endVolParent.materialName();
 	    hStoppingMat_->Fill(materialName.c_str(), 1.);
 	    if(materialName.size() > 40) 
-	      printf("Warning! Material name longer than material name array! (%s)\n", materialName.c_str());
+	      printf("GammaConverionPoints::%s: Warning! Material name longer than material name array! (%s)\n", 
+		     __func__, materialName.c_str());
+
 	    sprintf(data_.mat, "%s",materialName.c_str());
 	    // std::cout << "mat : " << data_.mat << " material : " << materialName.c_str() << std::endl;
 	  } else sprintf(data_.mat,"%s",defaultMat_.c_str());
