@@ -151,6 +151,7 @@ namespace mu2e {
     , g4DeltaIntersection_(_config.getDouble("g4.deltaIntersection")*CLHEP::mm)
     , g4DeltaChord_(_config.getDouble("g4.deltaChord")*CLHEP::mm)
     , bfieldMaxStep_(_config.getDouble("bfield.maxStep", 20.)*CLHEP::mm)
+    , strawGasMaxStep_(_config.getDouble("strawGas.maxStep", 20.)*CLHEP::mm)
     , useEmOption4InTracker_(_config.getBool("g4.useEmOption4InTracker",false))
   {
     _verbosityLevel = _config.getInt("world.verbosityLevel", 0);
@@ -173,6 +174,7 @@ namespace mu2e {
     , g4StepMinimum_(pset.get<double>("physics.stepMinimum")*CLHEP::mm)
     , g4MaxIntSteps_(pset.get<int>("physics.maxIntSteps"))
     , bfieldMaxStep_(pset.get<double>("physics.bfieldMaxStep")*CLHEP::mm)
+    , strawGasMaxStep_(pset.get<double>("physics.strawGasMaxStep")*CLHEP::mm)
     , limitStepInAllVolumes_(pset.get<bool>("physics.limitStepInAllVolumes"))
     , useEmOption4InTracker_(pset.get<bool>("physics.useEmOption4InTracker",false))
   {
@@ -482,7 +484,7 @@ namespace mu2e {
 #endif
     } else {
       _stepper = new G4SimpleRunge(_rhs);
-      if ( _g4VerbosityLevel > -1 ) G4cout << __func__ << "Using default G4SimpleRunge stepper" << G4endl;
+      if ( _g4VerbosityLevel > -1 ) G4cout << __func__ << " Using default G4SimpleRunge stepper" << G4endl;
     }
     G4ChordFinder * _chordFinder = new G4ChordFinder(_field,g4StepMinimum_,_stepper);
     G4FieldManager * _manager = new G4FieldManager(_field,_chordFinder,true);
@@ -496,15 +498,15 @@ namespace mu2e {
     // Define uniform field region in the detector solenoid, if neccessary
     if (bfConfig->dsFieldForm() == BFieldConfig::dsModelUniform  ){
       ds2Vacuum->SetFieldManager( _dsUniform->manager(), true);
-      if ( _verbosityLevel > 0 ) G4cout << __func__ << "Use uniform field in DS2" << G4endl;
+      if ( _verbosityLevel > 0 ) G4cout << __func__ << " Use uniform field in DS2" << G4endl;
     }
     if (bfConfig->dsFieldForm() == BFieldConfig::dsModelUniform || bfConfig->dsFieldForm() == BFieldConfig::dsModelSplit){
       if( needDSGradient ) {
         ds3Vacuum->SetFieldManager( _dsGradient->manager(), true);
-      if ( _verbosityLevel > 0 ) G4cout << __func__ << "Use gradient field in DS3" << G4endl;
+      if ( _verbosityLevel > 0 ) G4cout << __func__ << " Use gradient field in DS3" << G4endl;
       } else {
         ds3Vacuum->SetFieldManager( _dsUniform->manager(), true);
-        if ( _verbosityLevel > 0 ) G4cout << __func__ << "Use uniform field in DS3" << G4endl;
+        if ( _verbosityLevel > 0 ) G4cout << __func__ << " Use uniform field in DS3" << G4endl;
       }
 
       // if( _config.getBool("hasMBS",false) ) {
@@ -545,8 +547,10 @@ namespace mu2e {
       G4cout << __func__ << " g4DeltaIntersection " << _manager->GetDeltaIntersection() << G4endl;
       G4cout << __func__ << " g4DeltaChord        " << _chordFinder->GetDeltaChord() << G4endl;
       G4cout << __func__ << " g4StepMinimum       "
-           << dynamic_cast<G4MagInt_Driver*>(_chordFinder->GetIntegrationDriver())->GetHmin() << G4endl;
+      // << dynamic_cast<G4MagInt_Driver*>(_chordFinder->GetIntegrationDriver())->GetHmin() << G4endl;
       // the above assumes G4ChordFinder is instantiated in the way it is done above with the 3 parameters
+      // does not work in 10.5+; fixme
+	     << g4StepMinimum_ << G4endl;
       G4cout << __func__ << " g4MaxIntStep        " << _propInField->GetMaxLoopCount() << G4endl;
     }
 
@@ -562,8 +566,29 @@ namespace mu2e {
     for ( auto v : vols ){
       v->logical->SetUserLimits( stepLimit );
       if(_g4VerbosityLevel > 0)  {
-        G4cout << __func__ <<"Activated step limit for volume "<<v->logical->GetName() << G4endl;
+        G4cout << __func__ << " Activated step limit for volume "<<v->logical->GetName() << G4endl;
       }
+    }
+  }
+
+
+  // helper function
+  void Mu2eWorld::setStepLimitToAllSuchVolumes(const G4String& vn,
+                                               G4UserLimits* const stepLimit,
+                                               const G4LogicalVolumeStore* const lvs,
+                                               int verbosityLevel) {
+    int vtbcc = 0;
+    for ( auto lvi=lvs->begin(); lvi!=lvs->end(); ++lvi) {
+      if ((*lvi)->GetName() == vn) {
+	(*lvi)->SetUserLimits( stepLimit );
+        if(verbosityLevel > 0) {
+          G4cout << __func__<< " Activated step limit for volume " << vn << G4endl;
+        }
+        ++vtbcc;
+      }
+    }
+    if (vtbcc>1 && verbosityLevel > -1) {
+      G4cout << __func__<< " WARNING: found " << vn << " " << vtbcc << " times" << G4endl;
     }
   }
 
@@ -610,36 +635,35 @@ namespace mu2e {
     vector<G4LogicalVolume*> mbsLVS;
     mbsLVS.push_back( _helper->locateVolInfo("MBSMother").logical );
 
-    vector<G4LogicalVolume*> calEl;
-
-    // calorimeter does not use the nest functions; fixme
-    // so we need to use the geant4's functions
-    G4LogicalVolumeStore* lvs = G4LogicalVolumeStore::GetInstance();
-
-    calEl.push_back( lvs->GetVolume("caloBackPlateFEELog",   _g4VerbosityLevel>0) );
-    calEl.push_back( lvs->GetVolume("caloCrystalFrameInLog", _g4VerbosityLevel>0) );
-    calEl.push_back( lvs->GetVolume("caloFEBLog",            _g4VerbosityLevel>0) );
-    calEl.push_back( lvs->GetVolume("caloFEEBoxInLog",       _g4VerbosityLevel>0) );
-    calEl.push_back( lvs->GetVolume("caloFrontPlateLog",     _g4VerbosityLevel>0) );
-    calEl.push_back( lvs->GetVolume("caloFullBackPlateLog",  _g4VerbosityLevel>0) );
-    calEl.push_back( lvs->GetVolume("caloHoleBackLog",       _g4VerbosityLevel>0) );
-    calEl.push_back( lvs->GetVolume("calofullCrystalDiskLog",_g4VerbosityLevel>0) );
-    calEl.push_back( lvs->GetVolume("ccrateBoxInLog",        _g4VerbosityLevel>0) );
-    calEl.push_back( lvs->GetVolume("ccrateFullBoxLog",      _g4VerbosityLevel>0) );
-
     // We may make separate G4UserLimits objects per logical volume but we choose not to.
     // At some it might be interesting to make several step limiters, each with different
     // limits.  For now that is not necessary.
     AntiLeakRegistry& reg = art::ServiceHandle<G4Helper>()->antiLeakRegistry();
     G4UserLimits* stepLimit = reg.add( G4UserLimits(bfieldMaxStep_) );
     if(_g4VerbosityLevel > 0) {
-      G4cout << __func__<<"Using step limit = "<<bfieldMaxStep_/CLHEP::mm<<" mm"<<G4endl;
+      G4cout << __func__ << " Using step limit = "<<bfieldMaxStep_/CLHEP::mm<<" mm"<<G4endl;
     }
 
     // Add the step limiters to the interesting volumes.
     // Keep them separated so that we can add different step limits should we decide to.
 
     // hallAir->SetUserLimits( stepLimit ); // not a vacuum per se; CPU costly
+
+    // calorimeter does not use the nest functions; fixme
+    // so we need to use the geant4's functions
+    // in addition, some of its logical volumes are duplicated; fixme
+
+    G4LogicalVolumeStore* lvs = G4LogicalVolumeStore::GetInstance();
+    setStepLimitToAllSuchVolumes("caloBackPlateFEELog",    stepLimit,lvs,_g4VerbosityLevel);
+    setStepLimitToAllSuchVolumes("caloCrystalFrameInLog",  stepLimit,lvs,_g4VerbosityLevel);
+    setStepLimitToAllSuchVolumes("caloFEBLog",             stepLimit,lvs,_g4VerbosityLevel);
+    setStepLimitToAllSuchVolumes("caloFEEBoxInLog",        stepLimit,lvs,_g4VerbosityLevel);
+    setStepLimitToAllSuchVolumes("caloFrontPlateLog",      stepLimit,lvs,_g4VerbosityLevel);
+    setStepLimitToAllSuchVolumes("caloFullBackPlateLog",   stepLimit,lvs,_g4VerbosityLevel);
+    setStepLimitToAllSuchVolumes("caloHoleBackLog",        stepLimit,lvs,_g4VerbosityLevel);
+    setStepLimitToAllSuchVolumes("calofullCrystalDiskLog", stepLimit,lvs,_g4VerbosityLevel);
+    setStepLimitToAllSuchVolumes("ccrateBoxInLog",         stepLimit,lvs,_g4VerbosityLevel);
+    setStepLimitToAllSuchVolumes("ccrateFullBoxLog",       stepLimit,lvs,_g4VerbosityLevel);
 
     ds1Vacuum->SetUserLimits( stepLimit );
     ds2Vacuum->SetUserLimits( stepLimit );
@@ -665,14 +689,21 @@ namespace mu2e {
       lv->SetUserLimits( stepLimit );
     }
 
-    for ( auto lv : calEl ){
-      if (lv) lv->SetUserLimits( stepLimit );
-    }
-
     // Now do all of the tracker related envelope volumes, using regex's with wildcards.
     stepLimiterHelper("^TrackerPlaneEnvelope_.*$",                 stepLimit );
     stepLimiterHelper("^TrackerSupportServiceEnvelope_.*$",        stepLimit );
     stepLimiterHelper("^TrackerSupportServiceSectionEnvelope_.*$", stepLimit );
+
+    // special case for straws to get the energy deposits right
+
+    if (strawGasMaxStep_>0.0) {
+      G4UserLimits* strawGasStepLimit = reg.add( G4UserLimits(strawGasMaxStep_) );
+      if(_g4VerbosityLevel > 0) {
+        G4cout << __func__<< " Using strawGas step limit = "
+               <<strawGasMaxStep_/CLHEP::mm<<" mm"<<G4endl;
+      }
+      stepLimiterHelper("^TrackerStrawGas_.*$", strawGasStepLimit);
+    }
 
     // and the calorimeter elements
 
@@ -922,7 +953,7 @@ namespace mu2e {
           for(G4LogicalVolumeStore::iterator pos=store->begin(); pos!=store->end(); pos++){
               G4String LVname = (*pos)->GetName();
 
-              if (LVname.find("ElectronicsROLog") != std::string::npos) {
+              if (LVname.find("caloFEECardROLog") != std::string::npos) {
                 (*pos)->SetSensitiveDetector(crCardSD);
               }
           }//for
@@ -936,7 +967,7 @@ namespace mu2e {
           for(G4LogicalVolumeStore::iterator pos=store->begin(); pos!=store->end(); pos++){
               G4String LVname = (*pos)->GetName();
 
-              if (LVname.find("activeStripBoardLog") != std::string::npos) {
+              if (LVname.find("ccrateActiveStripLog") != std::string::npos) {
                 (*pos)->SetSensitiveDetector(cCrateSD);
               }
           }//for

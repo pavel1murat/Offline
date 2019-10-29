@@ -10,9 +10,16 @@ int mu2e::ValSimParticle::declare(art::TFileDirectory tfs) {
   _hp = tfs.make<TH1D>( "p", "P", 100, 0.0, 200.0);
   _hendKE = tfs.make<TH1D>( "endKE", "endKE", 100, 0.0, 200.0);
   _hpe = tfs.make<TH1D>( "pe", "P ele", 100, 0.0, 200.0);
+  _hpe2 = tfs.make<TH1D>( "pe2", "P ele", 100, 0.0, 10.0);
+  _hpg = tfs.make<TH1D>( "pg", "P gamma", 100, 0.0, 200.0);
+  _hpg2 = tfs.make<TH1D>( "pg2", "P gamma", 100, 0.0, 10.0);
   _hpm = tfs.make<TH1D>( "pm", "P muon", 100, 0.0, 600.0);
   _hp0 = tfs.make<TH1D>( "p0", "P pi0", 100, 0.0, 600.0);
   _hpi = tfs.make<TH1D>( "pi", "P pi+/-", 100, 0.0, 600.0);
+  _hpk0 = tfs.make<TH1D>( "k0", "P K_L^0", 100, 0.0, 600.0);
+  _hpk  = tfs.make<TH1D>( "pk", "P K+/-", 100, 0.0, 600.0);
+  _hpn0 = tfs.make<TH1D>( "pn0", "P n", 100, 0.0, 200.0);
+  _hpn02 = tfs.make<TH1D>( "pn02", "P n", 100, 0.0, 10.0);
   _hpn = tfs.make<TH1D>( "pn", "P nuclei", 100, 0.0, 200.0);
   _hpn2 = tfs.make<TH1D>( "pn2", "P nuclei", 100, 0.0, 10.0);
   _hsx = tfs.make<TH1D>( "Xstart", "start X", 100, -6000.0, 6000.0);
@@ -29,7 +36,14 @@ int mu2e::ValSimParticle::declare(art::TFileDirectory tfs) {
   _hezDS = tfs.make<TH1D>( "ZendDS", "end Z DS", 100,  3000.0, 14000.0);
   _hscode = tfs.make<TH1D>( "scode", "start code", 151, -0.5, 150.0);
   _hecode = tfs.make<TH1D>( "ecode", "end code", 151, -0.5, 150.0);
+  _hNS  = tfs.make<TH1D>( "NStep", "N Steps", 100, -0.05, 10000.0);
+  _hNS2 = tfs.make<TH1D>( "NStep2", "log10(N Steps)", 100, -0.05, 9.95);
+  _hl1 = tfs.make<TH1D>( "Length1", "Length", 100, 0.0, 1000.0);
+  _hl2 = tfs.make<TH1D>( "Length2", "Length", 100, 0.0, 10.0);
+  _hl3 = tfs.make<TH1D>( "Length3", "log10(Length)", 100, -19.0, 6.0);
   _idh.declare(tfs,"idh","id fold, p>10");
+  _hND  = tfs.make<TH1D>( "NDaughter",  "N Daughters", 100, -0.05, 100.0);
+  _hND2 = tfs.make<TH1D>( "NDaughter2", "N Daughters", 100, -0.05, 1000.0);
   _hscodeh = tfs.make<TH1D>( "scodeh", "start code, p>10", 151, -0.5, 150.0);
   _hecodeh = tfs.make<TH1D>( "ecodeh", "end code, p>10", 151, -0.5, 150.0);
   _idhendKE.declare(tfs,"idhendKE","id fold, endKE>10");
@@ -54,7 +68,7 @@ int mu2e::ValSimParticle::fill(const mu2e::SimParticleCollection & coll,
 
   // increment this by 1 any time the defnitions of the histograms or the 
   // histogram contents change, and will not match previous versions
-  _hVer->Fill(4.0);
+  _hVer->Fill(6.0);
 
   _hN->Fill(coll.size()); 
   double x = (coll.size()<=0 ? 0 : log10(coll.size()) );
@@ -63,16 +77,31 @@ int mu2e::ValSimParticle::fill(const mu2e::SimParticleCollection & coll,
   for(auto sp : coll) {
     const mu2e::SimParticle& part = sp.second;
     double pstart = part.startMomentum().vect().mag();
-    //int idc = _id.fill(part.pdgId());
-    int idc =_id.fill(part.pdgId());
+    int idc = _id.fill(part.pdgId()); // this "rewrites" pdgId
     double p = part.startMomentum().vect().mag();
     double endKE = part.endKineticEnergy();
     _hp->Fill(p);
     _hendKE->Fill(endKE);
-    if(abs(idc)==11) _hpe->Fill(p);
+    if(abs(idc)==11) {
+      _hpe->Fill(p);
+      _hpe2->Fill(p);
+    }
     if(abs(idc)==13) _hpm->Fill(p);
+    if(abs(idc)==22) {
+      _hpg->Fill(p);
+      _hpg2->Fill(p);
+    }
     if(abs(idc)==30) _hp0->Fill(p);
     if(abs(idc)==31) _hpi->Fill(p);
+
+    if(abs(idc)==32) _hpk0->Fill(p);
+    if(abs(idc)==34) _hpk->Fill(p);
+
+    if(abs(idc)==40) {
+      _hpn0->Fill(p);
+      _hpn02->Fill(p);
+    }
+
     if(abs(idc)==51) {
       _hpn->Fill(p);
       _hpn2->Fill(p);
@@ -94,7 +123,17 @@ int mu2e::ValSimParticle::fill(const mu2e::SimParticleCollection & coll,
 
     _hscode->Fill(part.originParticle().creationCode().id());
     _hecode->Fill(part.stoppingCode().id());
-    
+
+    _hNS->Fill(part.nSteps());
+    _hNS2->Fill(part.nSteps()<=0 ? 0 : log10(part.nSteps()));
+
+    _hl1->Fill(part.trackLength());
+    _hl2->Fill(part.trackLength());
+    _hl3->Fill(part.trackLength()<=0 ? 0 : log10(part.trackLength()));
+
+    _hND->Fill(part.daughters().size());
+    _hND2->Fill(part.daughters().size());
+
     if(pstart>10.0) {
       _idh.fill(part.pdgId()); 
       _hscodeh->Fill(part.originParticle().creationCode().id());
