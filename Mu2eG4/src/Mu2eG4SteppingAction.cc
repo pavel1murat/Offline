@@ -52,6 +52,12 @@ namespace mu2e {
 
     trajectoryControl_(&trajectoryControl),
 
+    // Values for killing low momentum RMC tracks
+    minRMCConversionEnergy_(pset.get<double>("steppingAction.minRMCDaughterEnergy", -1.)), 
+    processRMCMaxEndpoint_(pset.get<double>("steppingAction.maxRMCEndpoint", -1.)), 
+    rmcPhotonEnergy_(-1.),
+    rmcAccepted_(0),
+
     // Default values for parameters that are optional in the run time configuration.
     _debugEventList(pset.get<std::vector<int> >("debug.eventList", std::vector<int>())),
     _debugTrackList(pset.get<std::vector<int> >("debug.trackList", std::vector<int>())),
@@ -63,6 +69,16 @@ namespace mu2e {
         for( unsigned int i=0; i<tvd_time_.size(); ++i ) G4cout << " " << tvd_time_[i];
             G4cout << " ns" << G4endl;
     }
+    if( minRMCConversionEnergy_ > processRMCMaxEndpoint_) 
+      G4cout << "Mu2eG4SteppingAction::" << __func__ << ": Warning! No tracks will pass current RMC Energy Cuts!\n";
+    if( minRMCConversionEnergy_ > 0.)
+      G4cout << "Mu2eG4SteppingAction::" << __func__ << ": Current RMC energy cuts are assuming a maximum photon energy of "
+	     << processRMCMaxEndpoint_
+	     << " MeV and are set for E > "
+	     << minRMCConversionEnergy_
+	     << " MeV\n";
+    
+    
   }//end ctor
 
   // A helper function to manage the printout.
@@ -118,6 +134,8 @@ namespace mu2e {
     tvd_collection_  = &outputHits;
     tvd_warning_printed_ = false;
     _spHelper    = &spHelper;
+    rmcPhotonEnergy_ = -1.; // < 0 to know not found yet
+    rmcAccepted_ = 0;
   }
 
     
@@ -131,6 +149,7 @@ namespace mu2e {
       G4StepPoint const* prept  = step->GetPreStepPoint();
       G4StepPoint const* postpt = step->GetPostStepPoint();
       
+
       /// FIXME: Optimization: if the current track (not step!) has
       /// initial momentum below the "g4.mcTrajectoryMomentumCut"
       /// threshold, we can skip adding trajectory points completely.
@@ -154,7 +173,11 @@ namespace mu2e {
               addTimeVDHit(step,i+1);
           }
       }
-      
+
+      //for killing low momentum conversions in RMC events
+      if(rmcAccepted_ < 0 || (minRMCConversionEnergy_ > 0. && processRMCMaxEndpoint_ > 0. && !rmcAccepted_ && killLowMomentumGammaDaughters(track)))
+	killTrack(track, ProcessCode::NotSpecified, fStopAndKill);
+
       if(steppingCuts_->steppingActionCut(step)) {
           killTrack(track, ProcessCode::mu2eKillerVolume, fStopAndKill);
       } else if(commonCuts_->steppingActionCut(step)) {
@@ -253,6 +276,60 @@ namespace mu2e {
       
       ++numKilledTracks_;
       return true;
+  }
+
+  // Kill tracks from RMC gammas that are too low momentum.
+  bool Mu2eG4SteppingAction::killLowMomentumGammaDaughters( const G4Track* const track){
+    //get photon energy for the event, should always come before conversion since at least
+    // one step before the conversion happens
+    if(rmcPhotonEnergy_ < 0. && track->GetTrackID() == 1.) {
+      rmcPhotonEnergy_ = track->GetVertexKineticEnergy();
+      return false; //if the parent, not a conversion yet
+    }
+
+    if(track->GetTrackID() == 1) { //gen photon
+      double e = track->GetTotalEnergy();
+      if(e > 1. && e < rmcPhotonEnergy_) // update photon energy if lost some but not all (so hasn't converted yet)
+	rmcPhotonEnergy_ = e;
+    }
+
+
+    if(track->GetParentID() == 1) { //daughter of the primary particle
+      if(Mu2eG4UserHelpers::findCreationCode(track) == ProcessCode(ProcessCode::conv)) { //conversion track
+	double energy = track->GetTotalEnergy();
+	//pass if energy is either above the min or partner could be above the min since photon energy not known in this case
+	if(rmcPhotonEnergy_ < 0. && 
+	   (energy > minRMCConversionEnergy_ || energy < (processRMCMaxEndpoint_-minRMCConversionEnergy_))) {
+	  rmcAccepted_ = 1; //call accepted from here
+	  printf("Mu2eG4SteppingAction::%s: Accepted conversion, without finding photon energy!\n", __func__);
+	  return false;
+	//if photon energy is known, check if either are actually above the threshold
+	} else if(rmcPhotonEnergy_ > 0. && 
+		  (energy > minRMCConversionEnergy_ || energy < (rmcPhotonEnergy_-minRMCConversionEnergy_))) {
+	  rmcAccepted_ = 1; //accepted track
+	  // printf("%s Accepted conversion\n", __func__);
+	  return false;
+	}
+      } else if(Mu2eG4UserHelpers::findCreationCode(track) == ProcessCode(ProcessCode::compt)) { //Compton track
+	double energy = track->GetTotalEnergy();
+	//pass if energy is above threshold 
+	if(energy > minRMCConversionEnergy_) {
+	  rmcAccepted_ = 1; 
+	  return false;
+	  //allow to continue if photon could still convert
+	} else if(rmcPhotonEnergy_ < 0. && processRMCMaxEndpoint_ - energy > minRMCConversionEnergy_)
+	  return false;
+	//if photon energy is known, check if photon still is able to convert (assume could have been updated)
+	else if(rmcPhotonEnergy_ > 0. && rmcPhotonEnergy_ > minRMCConversionEnergy_)
+	  return false;	
+      } else
+	return false; //not a conversion, don't kill
+    } else
+      return false; //not a daughter of the original particle
+    
+    //Kill the event
+    rmcAccepted_ = -1;
+    return true; 
   }
 
   // Record why the track is to be killed, then kill it.
