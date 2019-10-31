@@ -1,0 +1,61 @@
+# -*- mode:tcl -*-
+#include "JobConfig/primary/flatE.fcl"
+
+process_name: conversionsampler
+
+services.TimeTracker : {
+	printSummary : true
+	dbOutput : {
+	    filename  : ""
+	    overwrite : false
+	}
+    }
+services.scheduler.wantSummary: true
+
+physics : {
+    producers : { @table::Primary.producers
+	generate: {  module_type: GammaConversionGun
+	    verbositylevel : 0	  
+	    doHistograms   : true
+	    gammaStops: {
+		@table::muonStops
+		branchName: "stops"
+		treeName: "conversionwriter/gammaStops/conversions"
+	    }
+	    # pMax  : 93.0 // MeV, maximum photon energy
+	    # pMin  : 84.5 // MeV, minimum daughter energy
+	    # czMin : -0.2 // minimum photon cos(theta)
+	    # czMax :  0.2 // maximum photon cos(theta)
+	    # testE : 90
+	    # testZ : 13
+	    # doOneLepton : true //only put high energy lepton in the event
+	    # xMin  : -4904
+	    # xMax  : -2904
+	    # yMin  : -1000
+	    # yMax  :  1000
+	    # zMin  :  3500
+	    # zMax  :  8000
+	    # rMin  :  0
+	    # rMax  :  500	    
+	}
+    }
+    analyzers : { @table::Primary.analyzers }
+    filters :   { @table::Primary.filters   }
+    e1 : [ ] 
+    p1 : [ generate, g4run ]
+    trigger_paths : [ p1 ]
+    end_paths : [ e1 ]
+}
+
+#include "JobConfig/primary/epilog.fcl"
+
+#To speed up test running
+physics.producers.g4run.physics.physicsListName : "QGSP_BERT"
+
+
+services.TFileService.fileName: "nts.owner.conversionsampler.version.sequencer.root"
+outputs.Output.fileName:        "dig.owner.conversionsampler.version.sequencer.art"
+#hack to access the root file on /pnfs/mu2e/resilient/
+#can instead put the file in the $MU2E_BASE_RELEASE directory to run until is in /cvmfs/mu2e.opensciencegrid.org/DataFiles/
+physics.producers.generate.gammaStops.inputFiles : [ "../../../pnfs/mu2e/resilient/users/mmackenz/gammastops/gamma_stops.root" ]
+

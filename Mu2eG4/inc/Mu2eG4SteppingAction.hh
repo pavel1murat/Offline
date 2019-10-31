@@ -105,6 +105,16 @@ namespace mu2e {
     // Store trajectory parameters at each G4Step; cleared at beginOfTrack time.
     std::vector<MCTrajectoryPoint> _trajectory;
 
+    // Values to kill low momentum RMC tracks
+    //minimum energy a daughter must have, <= 0 to not kill tracks
+    double minRMCConversionEnergy_;
+    //maximum endpoint value intended with dataset, assumed partner of a given track could have
+    // this energy when deciding whether or not to kill the track if haven't found energy  yet
+    double processRMCMaxEndpoint_;
+    //photon's energy in current event 
+    double rmcPhotonEnergy_;
+    int    rmcAccepted_; // 0 = undetermined, -1 = kill event, 1 = accept event
+
     // Lists of events and tracks for which to enable debug printout.
     EventNumberList _debugEventList;
     EventNumberList _debugTrackList;
@@ -121,6 +131,9 @@ namespace mu2e {
 
     // Functions to decide whether or not to kill tracks.
     bool killTooManySteps ( const G4Track* const);
+
+    // Function to decide whether or not to kill an RMC daughter track.
+    bool killLowMomentumGammaDaughters( const G4Track* const track);
 
     // A helper function to kill the track and record the reason for killing it.
     void killTrack( G4Track* track, ProcessCode::enum_type code, G4TrackStatus status );
