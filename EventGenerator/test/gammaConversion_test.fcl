@@ -22,27 +22,27 @@ physics : {
 		branchName: "stops"
 		treeName: "conversionwriter/gammaStops/conversions"
 	    }
-	    # pMax  : 93.0 // MeV, maximum photon energy
-	    # pMin  : 84.5 // MeV, minimum daughter energy
-	    # czMin : -0.2 // minimum photon cos(theta)
-	    # czMax :  0.2 // maximum photon cos(theta)
-	    # testE : 90
-	    # testZ : 13
-	    # doOneLepton : true //only put high energy lepton in the event
-	    # xMin  : -4904
-	    # xMax  : -2904
-	    # yMin  : -1000
-	    # yMax  :  1000
-	    # zMin  :  3500
-	    # zMax  :  8000
-	    # rMin  :  0
-	    # rMax  :  500	    
+	    # pMax            : 93.0 // MeV, maximum photon energy
+	    # pMin            : 84.5 // MeV, minimum daughter energy
+	    # czMin           : -0.2 // minimum photon cos(theta)
+	    # czMax           :  0.2 // maximum photon cos(theta)
+	    # testE           : 90   // MeV, test photon energy to use
+	    # defaultMaterial : StoppingTarget_Al // test stopping material to use
+	    # doOneLepton     : true // only put high energy lepton in the event
+	    # xMin            : -490 // mm, photon vertex cuts 
+	    # xMax            : -290 // mm, photon vertex cuts 
+	    # yMin            : -100 // mm, photon vertex cuts 
+	    # yMax            :  100 // mm, photon vertex cuts 
+	    # zMin            :  350 // mm, photon vertex cuts 
+	    # zMax            :  800 // mm, photon vertex cuts 
+	    # rMin            :  0   // mm, photon vertex cuts 
+	    # rMax            :  500 // mm, photon vertex cuts 	    
 	}
     }
     analyzers : { @table::Primary.analyzers }
     filters :   { @table::Primary.filters   }
     e1 : [ ] 
-    p1 : [ generate, g4run ]
+    p1 : [ generate, g4run ] // g4run is needed to build physics process list
     trigger_paths : [ p1 ]
     end_paths : [ e1 ]
 }
@@ -51,6 +51,9 @@ physics : {
 
 #To speed up test running
 physics.producers.g4run.physics.physicsListName : "QGSP_BERT"
+#kill all events in geant to test generator without simulation (much faster)
+physics.producers.g4run.steppingAction.minRMCDaughterEnergy : 90.0 // MeV
+physics.producers.g4run.steppingAction.maxRMCEndpoint       : 80.0 // MeV
 
 
 services.TFileService.fileName: "nts.owner.conversionsampler.version.sequencer.root"

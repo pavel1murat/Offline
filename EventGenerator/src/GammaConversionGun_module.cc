@@ -100,7 +100,7 @@ namespace mu2e {
     G4ParticleDefinition* photon_; //for passing into the pair production spectrum
     G4BetheHeitlerModel* g4bhm_; //pair production spectrum
     
-    TH1F* _hgencuts; //records number of events attempted
+    TH1D* _hgencuts; //records number of events attempted
     TH1F* _hmomentum;
     TH1F* _hcos;
     TH1F* _hcosWt;
@@ -127,7 +127,6 @@ namespace mu2e {
     , eng_(createEngine(art::ServiceHandle<SeedService>()->getSeed()))
     , randomFlat_      (eng_)
     , stops_           (eng_, pset.get<fhicl::ParameterSet>("gammaStops"))
-    // , pairProd_        (&randomFlat_)
     , doHistograms_    (pset.get<bool>("doHistograms",true ))
     , xMin_            (pset.get<double>("xMin",-1.e9 ))
     , xMax_            (pset.get<double>("xMax", 1.e9 ))
@@ -186,10 +185,10 @@ namespace mu2e {
 
     }
 
-    //essentially a weight histogram, so store always
+    //essentially a weight histogram, so always store
     art::ServiceHandle<art::TFileService> tfs;
     art::TFileDirectory tfdir = tfs->mkdir( "GammaConversionGun" );
-    _hgencuts  = tfdir.make<TH1F>( "hgencuts", "Attempts to generate vs cut number", 10,  0.5,  10.5  );
+    _hgencuts  = tfdir.make<TH1D>( "hgencuts", "Attempts to generate vs cut number", 10,  0.5,  10.5  );
     if ( doHistograms_ ) {
 
       _hmomentum = tfdir.make<TH1F>("hmomentum", "Given photon momentum", 1000,  0.,  200.  );
@@ -273,7 +272,12 @@ namespace mu2e {
       if(defaultMat_.size() == 0) sprintf(mat,"%s",stop.mat); 
       else                        sprintf(mat,"%s",defaultMat_.c_str()); 
       weight = stop.weight; gen_energy = stop.genEnergy;
-
+      
+      if(verbosityLevel_ > 2) {
+	printf("Next Stop Attempt: (x,y,z,t) = (%.2f,%.2f,%.2f,%.2f), ",x,y,z,t);
+	printf("(px,py,pz,gen_energy) = (%.2f,%.2f,%.2f,%.2f), ",px,py,pz,gen_energy);
+	printf("material = %s\n", mat);
+      }
       _hgencuts->Fill(1); //all generations
       passed = !(x < xMin_ || x > xMax_
 		 || y < yMin_ || y > yMax_
@@ -283,23 +287,33 @@ namespace mu2e {
 
       if(!passed) continue;
       _hgencuts->Fill(2); //passed spacial cut
+      if(verbosityLevel_ > 2) 
+	printf("Passed spacial cut\n");
+
       CLHEP::Hep3Vector mom(px, py, pz);
       if(testE_ > 0.) mom.setMag(testE_);
       
-      double photonE = mom.mag();
-      passed = passed && (pMax_ < 0. || pMax_ > photonE);
+      passed = passed && (pMax_ < 0. || pMax_ > gen_energy);
       if(!passed) continue;
-      _hgencuts->Fill(3); //passed maximum photon momentum cut
+      _hgencuts->Fill(3); //passed maximum gen photon momentum cut
+      if(verbosityLevel_ > 2) 
+	printf("Passed gen energy cut\n");
 
       double cz = mom.cosTheta();
       passed = passed && cz >= czMin_ && cz <= czMax_;
       if(!passed) continue;
       _hgencuts->Fill(4); //Cos(theta) cut
 
-      //can't make a daughter of pMin if below already
-      passed = passed && photonE > pMin_;
+      //can't make a daughter of pMin if energy below pmin + electron mass already
+      //use slightly less than electron mass here to be safe
+      double photonE = mom.mag();
+      if(verbosityLevel_ > 2) 
+	printf("Passed cos theta cut\nPhoton energy = %.2f\n", photonE);
+      passed = passed && (photonE - 0.500) > pMin_;
       if(!passed) continue;
       _hgencuts->Fill(5); //passed initial minimum momentum cut
+      if(verbosityLevel_ > 2) 
+	printf("Passed min photon energy cut\n");
 
       //sample the spectrum
       std::vector<G4DynamicParticle*> *g4dpv = new std::vector<G4DynamicParticle*>();
@@ -323,6 +337,8 @@ namespace mu2e {
       passed = passed && (mome.vect().mag() > pMin_ || momp.vect().mag() > pMin_);
       if(!passed) continue;
       _hgencuts->Fill(6); //Final momentum cut
+      if(verbosityLevel_ > 2) 
+	printf("Passed min daughter energy cut\n");
 
       pos.setX(x); pos.setY(y); pos.setZ(z);
 

@@ -175,7 +175,9 @@ namespace mu2e {
       }
 
       //for killing low momentum conversions in RMC events
-      if(rmcAccepted_ < 0 || (minRMCConversionEnergy_ > 0. && processRMCMaxEndpoint_ > 0. && !rmcAccepted_ && killLowMomentumGammaDaughters(track)))
+      if(rmcAccepted_ < 0 || (minRMCConversionEnergy_ > 0. && processRMCMaxEndpoint_ > 0. && 
+			      ((minRMCConversionEnergy_ > processRMCMaxEndpoint_) || 
+			       (!rmcAccepted_ && killLowMomentumGammaDaughters(track)))))
 	killTrack(track, ProcessCode::NotSpecified, fStopAndKill);
 
       if(steppingCuts_->steppingActionCut(step)) {
