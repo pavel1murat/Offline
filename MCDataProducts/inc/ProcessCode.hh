@@ -43,7 +43,6 @@ namespace mu2e {
     // Add new elements just before lastEnum; do not insert new elements
     // prior to this - it will break backwards compatibility.
     enum enum_type {
-<<<<<<< Updated upstream
       unknown,                AlphaInelastic,          annihil,             AntiLambdaInelastic,            // 3 
       AntiNeutronInelastic,   AntiOmegaMinusInelastic, AntiProtonInelastic, AntiSigmaMinusInelastic,	    // 7 
       AntiSigmaPlusInelastic, AntiXiMinusInelastic,    AntiXiZeroInelastic, CHIPSNuclearCaptureAtRest,	    //11 
