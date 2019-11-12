@@ -64,12 +64,43 @@ namespace mu2e {
 
   //================================================================
   class GammaConversionGun : public art::EDProducer {
+  public:
+
+    typedef RootTreeSampler<IO::ConversionPointF> RTS;
+    
+    struct Config {
+      using Name=fhicl::Name;
+      using Comment=fhicl::Comment;
+      fhicl::Atom<int> verbosityLevel{Name("verbosityLevel"), Comment("verbosity level (>=0)"), 0};
+      fhicl::Table<RTS::Config> stops{Name("gammaStops"), Comment("Gamma stops parameter set")};
+      fhicl::Atom<bool> doHistograms{Name("doHistograms"), Comment("Whether or not to make generation histograms (true/false)"), false};
+      fhicl::Atom<double> xMin{Name("xMin"), Comment("Stop minimum x value (mm)"), -1.e9};
+      fhicl::Atom<double> xMax{Name("xMax"), Comment("Stop maximum x value (mm)"),  1.e9};
+      fhicl::Atom<double> yMin{Name("yMin"), Comment("Stop minimum y value (mm)"), -1.e9};
+      fhicl::Atom<double> yMax{Name("yMax"), Comment("Stop maximum y value (mm)"),  1.e9};
+      fhicl::Atom<double> zMin{Name("zMin"), Comment("Stop minimum z value (mm)"), -1.e9};
+      fhicl::Atom<double> zMax{Name("zMax"), Comment("Stop maximum z value (mm)"),  1.e9};
+      fhicl::Atom<double> rMin{Name("rMin"), Comment("Stop minimum radius in the DS (mm)"), -1.};
+      fhicl::Atom<double> rMax{Name("rMax"), Comment("Stop maximum radius in the DS (mm)"),  1.e9};
+      fhicl::Atom<double> czMin{Name("czMin"), Comment("Stop minimum cos(theta) value"), -1.};
+      fhicl::Atom<double> czMax{Name("czMax"), Comment("Stop maximum cos(theta) value"),  1.};
+      fhicl::Atom<double> pMin{Name("pMin"), Comment("Minimum photon daughter momentum (MeV/c)"), -1.};
+      fhicl::Atom<double> pMax{Name("pMax"), Comment("Maximum photon generated energy (MeV/c) ( < 0 to ignore)"),  -1.};
+      fhicl::Atom<std::string> defaultMat{Name("defaultMaterial"), Comment("Override ntuple material with a given material"),  ""};
+      fhicl::Atom<double> testE{Name("testE"), Comment("Test photon energy to override ntuple energy with (MeV/c) ( < 0 to ignore)"), -1.};
+      fhicl::Atom<double> xOffset{Name("solenoidXOffset"), Comment("X coordinate offset for radius calculations (mm)"), -3904.};
+    };
+    typedef art::EDProducer::Table<Config> Parameters;
+
+
+    explicit GammaConversionGun(const Parameters& pset);
+    virtual void produce(art::Event& event);
     int                 verbosityLevel_;
 
     art::RandomNumberGenerator::base_engine_t& eng_;
 
     CLHEP::RandFlat     randomFlat_;
-    RootTreeSampler<IO::ConversionPointF> stops_;
+    RTS stops_;
     // PairProduction pairProd_;
 
     bool doHistograms_;
@@ -93,8 +124,6 @@ namespace mu2e {
     std::string defaultMat_; //for testing the pair production spectrum for a given material
     double testE_; //for testing the pair production spectrum for a given Energy
     
-    bool doOneLepton_; //For only putting the high energy lepton in the event, debug only!
-    
     double xOffset_; //ds axis x offset
 
     G4ParticleDefinition* photon_; //for passing into the pair production spectrum
@@ -114,36 +143,31 @@ namespace mu2e {
     TH2F* _hMeeVsE;
     TH1F* _hMeeOverE;                   // M(ee)/E(gamma)
     TH1F* _hy;				// splitting function
-
-  public:
-    explicit GammaConversionGun(const fhicl::ParameterSet& pset);
-    virtual void produce(art::Event& event);
   };
 
   //================================================================
-  GammaConversionGun::GammaConversionGun(const fhicl::ParameterSet& pset)
-    : EDProducer{pset}
-    , verbosityLevel_  (pset.get<int>   ("verbosityLevel", 0))
+  GammaConversionGun::GammaConversionGun(const Parameters& pset)
+    : EDProducer(pset)
+    , verbosityLevel_  (pset().verbosityLevel())
     , eng_(createEngine(art::ServiceHandle<SeedService>()->getSeed()))
     , randomFlat_      (eng_)
-    , stops_           (eng_, pset.get<fhicl::ParameterSet>("gammaStops"))
-    , doHistograms_    (pset.get<bool>("doHistograms",true ))
-    , xMin_            (pset.get<double>("xMin",-1.e9 ))
-    , xMax_            (pset.get<double>("xMax", 1.e9 ))
-    , yMin_            (pset.get<double>("yMin",-1.e9 ))
-    , yMax_            (pset.get<double>("yMax", 1.e9 ))
-    , zMin_            (pset.get<double>("zMin",-1.e9 ))
-    , zMax_            (pset.get<double>("zMax", 1.e9 ))
-    , rMin_            (pset.get<double>("rMin",-1.e9 ))
-    , rMax_            (pset.get<double>("rMax", 1.e9 ))
-    , pMin_            (pset.get<double>("pMin",  -1. ))
-    , pMax_            (pset.get<double>("pMax",  -1. ))
-    , czMin_           (pset.get<double>("czMin", -1. ))
-    , czMax_           (pset.get<double>("czMax",  1. ))
-    , defaultMat_      (pset.get<std::string>("defaultMaterial", ""))
-    , testE_           (pset.get<double>("testE", -1. ))
-    , doOneLepton_     (pset.get<bool>("doOneLepton", false ))
-    , xOffset_         (pset.get<double>("solenoidXOffset", -3904. ))
+    , stops_           (eng_, pset().stops())
+    , doHistograms_    (pset().doHistograms())
+    , xMin_            (pset().xMin())
+    , xMax_            (pset().xMax())
+    , yMin_            (pset().yMin())
+    , yMax_            (pset().yMax())
+    , zMin_            (pset().zMin())
+    , zMax_            (pset().zMax())
+    , rMin_            (pset().rMin())
+    , rMax_            (pset().rMax())
+    , pMin_            (pset().pMin())
+    , pMax_            (pset().pMax())
+    , czMin_           (pset().czMin())
+    , czMax_           (pset().czMax())
+    , defaultMat_      (pset().defaultMat())
+    , testE_           (pset().testE())
+    , xOffset_         (pset().xOffset())
   {
     produces<mu2e::GenParticleCollection>();
     produces<mu2e::EventWeight>();
@@ -168,8 +192,6 @@ namespace mu2e {
 	<< zMin_ << " < z < " << zMax_ << ", "
 	<< rMin_ << " < r < " << rMax_ << "\n";
 
-    if(doOneLepton_)
-      std::cout << "GammaConversionGun: Warning! Only putting the highest energy lepton in the event!\n";
     if(defaultMat_.size() > 0)
       std::cout << "GammaConversionGun: Overriding Ntuple defined material and instead using "
 		<< defaultMat_.c_str() << std::endl;
@@ -196,10 +218,10 @@ namespace mu2e {
       _hcosWt    = tfdir.make<TH1F>("hcosWt"   , "Given photon cos(#theta) weighted", 1000,  -1.,  1.  );
       _hr        = tfdir.make<TH1F>("hr"       , "Given photon radius from the DS axis", 1000,  0.,  2000.  );
       _hz        = tfdir.make<TH1F>("hz"       , "Given photon Z", 1000,  0., 15000.  );
-      _hElecMom  = tfdir.make<TH1F>("hElecMom" , "Produced electron momentum", 1000,  0. , 200.);
-      _hPosiMom  = tfdir.make<TH1F>("hPosiMom" , "Produced positron momentum", 1000,  0. , 200.);
-      _hTotMom   = tfdir.make<TH1F>("hTotMom"   , "Produced total momentum", 1000.,  0. , 200.);
-      _hTotMomWt = tfdir.make<TH1F>("hTotMomWt" , "Produced total momentum weighted", 1000.,  0. , 200.);
+      _hElecMom  = tfdir.make<TH1F>("hElecMom" , "Produced electron momentum", 2000,  0. , 200.);
+      _hPosiMom  = tfdir.make<TH1F>("hPosiMom" , "Produced positron momentum", 2000,  0. , 200.);
+      _hTotMom   = tfdir.make<TH1F>("hTotMom"   , "Produced total momentum", 2000.,  0. , 200.);
+      _hTotMomWt = tfdir.make<TH1F>("hTotMomWt" , "Produced total momentum weighted", 2000.,  0. , 200.);
       _hMee      = tfdir.make<TH1F>("hMee"     , "M(e+e-) "           , 200,0.,200.);
       _hMeeVsE   = tfdir.make<TH2F>("hMeeVsE"  , "M(e+e-) vs E"       , 200,0.,200.,200,0,200);
       _hMeeOverE = tfdir.make<TH1F>("hMeeOverE", "M(e+e-)/E "         , 200, 0.,1);
@@ -346,8 +368,8 @@ namespace mu2e {
     _hgencuts->Fill(10); //passing all cuts
     
                                                                                    //GenId = 44
-    if(!doOneLepton_ || mome.e() >  momp.e()) output->emplace_back(PDGCode::e_minus, GenId::gammaPairProduction, pos, mome, t);
-    if(!doOneLepton_ || momp.e() >= mome.e()) output->emplace_back(PDGCode::e_plus , GenId::gammaPairProduction, pos, momp, t);
+    output->emplace_back(PDGCode::e_minus, GenId::gammaPairProduction, pos, mome, t);
+    output->emplace_back(PDGCode::e_plus , GenId::gammaPairProduction, pos, momp, t);
     event.put(move(output));
 
     //add event weight and gen photon energy to the output

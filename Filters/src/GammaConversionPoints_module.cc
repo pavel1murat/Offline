@@ -60,7 +60,24 @@ namespace mu2e {
 
   class GammaConversionPoints : public art::EDFilter {
   public:
-    explicit GammaConversionPoints(fhicl::ParameterSet const& pset);
+
+    struct Config {
+      using Name=fhicl::Name;
+      using Comment=fhicl::Comment;
+      fhicl::Atom<std::string> g4ModuleLabel{Name("g4ModuleLabel"), Comment("Geant module label")};
+      fhicl::Atom<std::string> simCollectionLabel{Name("simCollectionLabel"), Comment("Sim particle collection module label ("" to use geant label)"),""};
+      fhicl::Atom<std::string> generatorLabel{Name("generatorLabel"), Comment("Generator module label for event weights ("" to ignore)"),""};
+      fhicl::Atom<std::string> defaultMat{Name("defaultMat"), Comment("Assume stop is in this given material"),  ""};
+      fhicl::Atom<bool> doFilter{Name("doFilter"), Comment("Whether or not to filter passing events (true/false)"), false};
+      fhicl::Atom<double> rMin{Name("rMin"), Comment("Stop minimum radius in the DS (mm)"), -1.};
+      fhicl::Atom<double> rMax{Name("rMax"), Comment("Stop maximum radius in the DS (mm)"),  1.e9};
+      fhicl::Atom<double> zMin{Name("zMin"), Comment("Stop minimum z value (mm)"), -1.e9};
+      fhicl::Atom<double> zMax{Name("zMax"), Comment("Stop maximum z value (mm)"),  1.e9};
+      fhicl::Atom<double> xOffset{Name("SolenoidXOffset"), Comment("X coordinate offset for radius calculations (mm)"), -3904.};
+    };
+    typedef art::EDFilter::Table<Config> Parameters;
+
+    explicit GammaConversionPoints(const Parameters& pset);
     virtual ~GammaConversionPoints() { }
 
     bool filter( art::Event& event);
@@ -99,18 +116,18 @@ namespace mu2e {
 
   };
 
-  GammaConversionPoints::GammaConversionPoints(fhicl::ParameterSet const& pset):
+  GammaConversionPoints::GammaConversionPoints(const Parameters& pset):
     art::EDFilter{pset},
-    g4ModuleLabel_(pset.get<string>("g4ModuleLabel")),
-    simCollectionLabel_(pset.get<string>("simCollectionLabel","")),
-    generatorLabel_(pset.get<string>("generatorLabel","")),
-    defaultMat_(pset.get<string>("defaultMat", "")),
-    doFilter_(pset.get<bool>("doFilter", false)),
-    rMin_(pset.get<double>("rMin",-1.)),
-    rMax_(pset.get<double>("rMax", 1.e9)),
-    zMin_(pset.get<double>("zMin",-1.e9)),
-    zMax_(pset.get<double>("zMax", 1.e9)),
-    xoffset_(pset.get<double>("SolenoidXOffset", -3904.)),
+    g4ModuleLabel_(pset().g4ModuleLabel()),
+    simCollectionLabel_(pset().simCollectionLabel()),
+    generatorLabel_(pset().generatorLabel()),
+    defaultMat_(pset().defaultMat()),
+    doFilter_(pset().doFilter()),
+    rMin_(pset().rMin()),
+    rMax_(pset().rMax()),
+    zMin_(pset().zMin()),
+    zMax_(pset().zMax()),
+    xoffset_(pset().xOffset()),
     hStoppingcode_(0),
     hStoppingMat_(0),
     ntup_(0),
