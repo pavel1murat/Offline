@@ -17,6 +17,8 @@
 #include "CLHEP/Random/RandGeneral.h"
 #include "CLHEP/Units/PhysicalConstants.h"
 
+#include "fhiclcpp/types/OptionalAtom.h"
+
 // Framework includes
 #include "art/Framework/Core/EDProducer.h"
 #include "art/Framework/Core/ModuleMacros.h"
@@ -53,9 +55,56 @@ namespace mu2e {
 
   //================================================================
   class RMCGun : public art::EDProducer {
+  public:
+    typedef RootTreeSampler<IO::StoppedParticleF> RTS;
+    
+    struct PhysConfig {
+      using Name=fhicl::Name;
+      using Comment=fhicl::Comment;
+      fhicl::Atom<int> generateIntConversion{Name("generateIntConversion"), Comment("Generate internal conversion (>=0)"), 0};
+      fhicl::Atom<double> elow{Name("elow"), Comment("Minimum energy value (MeV)")};
+      fhicl::Atom<double> ehi{Name("ehi"), Comment("Maximum energy value (MeV)")};
+      fhicl::Atom<std::string> spectrumShape{Name("spectrumShape"), Comment("Spectrum shape (e.g. RMC or flat)")};
+      fhicl::Atom<double> spectrumResolution{Name("spectrumResolution"), Comment("Energy resolution for binned spectrum (MeV)")};
+      fhicl::OptionalAtom<double> kMaxUser{Name("kMaxUser"), Comment("kMax value to use (MeV)")};
+      fhicl::OptionalAtom<bool> kMaxUserSet{Name("kMaxUserSet"), Comment("Whether or not to use a user kMax value (true/false)")};
+      //to allow for the other binned spectrum information that could be provided
+      fhicl::OptionalAtom<bool> fixMax{Name("FixMax"), Comment("Fix max (true/false)")};      
+      fhicl::OptionalAtom<PDGCode::type> pdgId{Name("pdgId"), Comment("PDG ID")};      
+      fhicl::OptionalAtom<unsigned> nbins{Name("nbins"), Comment("Number of bins")};      
+      fhicl::OptionalAtom<std::string> spectrumFileName{Name("spectrumFileName"), Comment("Name of spectrum file")};      
+      fhicl::OptionalAtom<bool> binCenter{Name("binCenter"), Comment("If spectrum uses bin centers")};      
+    };
+    
+      
+    //ignore assumed keys for a EDProducer
+    struct KeysToIgnore {
+      std::set<std::string> operator()()
+      {
+	return {"module_type"};
+      }
+    };
+
+    struct Config {
+      using Name=fhicl::Name;
+      using Comment=fhicl::Comment;
+      fhicl::Table<PhysConfig> psphys{Name("physics")}; //, Comment("Physics parameter set") 
+      fhicl::Atom<int> verbosityLevel{Name("verbosityLevel"), Comment("verbosity level (>=0)"), 0};
+      fhicl::Atom<double> czmin{Name("czmin"), Comment("Minimum cos(theta) value"), -1.};
+      fhicl::Atom<double> czmax{Name("czmax"), Comment("Maximum cos(theta) value"),  1.};
+      fhicl::Atom<double> phimin{Name("phimin"), Comment("Minimum phi value (0 - 2 pi))"), 0.};
+      fhicl::Atom<double> phimax{Name("phimax"), Comment("Maximum phi value (0 - 2 pi)"),  CLHEP::twopi};
+      fhicl::Table<RTS::Config> stops{Name("muonStops"), Comment("Muon stops parameter set")};
+      fhicl::Atom<bool> doHistograms{Name("doHistograms"), Comment("Whether or not to make generation histograms (true/false)"), false};
+      fhicl::Atom<bool> doCosWeights{Name("doCosWeights"), Comment("Whether or not to use a user cos(theta) generation function (true/false)"), false};
+      fhicl::Atom<bool> doEnergyWeights{Name("doEnergyWeights"), Comment("Whether or not to use a user energy generation function (true/false)"), false};
+      fhicl::Atom<std::string> energyFuncString{Name("energyFuncString"), Comment("User energy generation function (string)"), ""};
+      fhicl::Atom<std::string> czFuncString{Name("czFuncString"), Comment("User cos(theta) generation function (string)"), ""};
+    };
+    typedef art::EDProducer::Table<Config> Parameters;
+
     fhicl::ParameterSet psphys_;
 
-    BinnedSpectrum spectrum_;
     static BinnedSpectrum parseSpectrumShape(const fhicl::ParameterSet& psphys,
                                              double *elow,
                                              double *ehi);
@@ -70,7 +119,6 @@ namespace mu2e {
 
     art::RandomNumberGenerator::base_engine_t& eng_;
 
-    CLHEP::RandGeneral  randSpectrum_;
     CLHEP::RandFlat     randomFlat_;
     RandomUnitSphere    randomUnitSphere_;
     MuonCaptureSpectrum muonCaptureSpectrum_;
@@ -84,6 +132,10 @@ namespace mu2e {
     bool doEnergyWeights_;
     std::string energyFuncString_;
     std::string czFuncString_;
+
+    BinnedSpectrum spectrum_;
+    CLHEP::RandGeneral*  randSpectrum_;
+
     TF1* cosThetaFunc_;
     TF1* energyFunc_;
 
@@ -115,35 +167,44 @@ namespace mu2e {
     TH1F* _hy;				// splitting function
 
   public:
-    explicit RMCGun(const fhicl::ParameterSet& pset);
+    explicit RMCGun(const Parameters& pset);
     virtual void produce(art::Event& event);
   };
 
   //================================================================
-  RMCGun::RMCGun(const fhicl::ParameterSet& pset)
+  RMCGun::RMCGun(const Parameters& pset)
     : EDProducer{pset}
-    , psphys_(pset.get<fhicl::ParameterSet>("physics"))
-    , spectrum_                  (BinnedSpectrum(psphys_))
-    , verbosityLevel_            (pset.get<int>   ("verbosityLevel", 0))
-    , generateInternalConversion_{psphys_.get<int>("generateIntConversion", 0)}
-    , czmin_                     (pset.get<double>("czmin" , -1.0))
-    , czmax_                     (pset.get<double>("czmax" ,  1.0))
-    , phimin_                    (pset.get<double>("phimin",  0. ))
-    , phimax_                    (pset.get<double>("phimax", CLHEP::twopi ))
+    , psphys_()
+    , verbosityLevel_            (pset().verbosityLevel())
+    , generateInternalConversion_{pset().psphys().generateIntConversion()}
+    , czmin_                     (pset().czmin())
+    , czmax_                     (pset().czmax())
+    , phimin_                    (pset().phimin())
+    , phimax_                    (pset().phimax())
     , eng_(createEngine(art::ServiceHandle<SeedService>()->getSeed()))
-    , randSpectrum_       (eng_, spectrum_.getPDF(), spectrum_.getNbins())
     , randomFlat_         (eng_)
     , randomUnitSphere_   (eng_, czmin_,czmax_,phimin_,phimax_)
     , muonCaptureSpectrum_(&randomFlat_,&randomUnitSphere_)
-    , stops_(eng_, pset.get<fhicl::ParameterSet>("muonStops"))
-    , doHistograms_( pset.get<bool>("doHistograms",true ) )
-    , doCosWeights_( pset.get<bool>("doCosWeights",false ) )
-    , doEnergyWeights_( pset.get<bool>("doEnergyWeights",false ) )
-    , energyFuncString_( pset.get<std::string>("energyFuncString",""))
-    , czFuncString_    ( pset.get<std::string>("czFuncString"    ,""))
+    , stops_(eng_, pset().stops())
+    , doHistograms_( pset().doHistograms() )
+    , doCosWeights_( pset().doCosWeights() )
+    , doEnergyWeights_( pset().doEnergyWeights() )
+    , energyFuncString_( pset().energyFuncString())
+    , czFuncString_    ( pset().czFuncString())
+    , spectrum_ ()
+    , randSpectrum_(0)
   {
     produces<mu2e::GenParticleCollection>();
     produces<mu2e::EventWeight>();
+
+    //Binned spectrum still takes a fhicl parameter set
+    const fhicl::ParameterSet physps = pset().psphys.get_PSet();
+    psphys_ = fhicl::ParameterSet(physps);
+    if(verbosityLevel_ > 1) {
+      std::cout << "RMCGun: Physics parameter set: \n" << physps.to_indented_string().c_str() << std::endl;
+    }
+    spectrum_ = BinnedSpectrum(psphys_);
+    randSpectrum_ = new CLHEP::RandGeneral(eng_, spectrum_.getPDF(), spectrum_.getNbins());
 
     if(verbosityLevel_ > 0) {
       std::cout<<"RMCGun: using = "
@@ -331,7 +392,7 @@ namespace mu2e {
   //================================================================
   double RMCGun::generateEnergy() {
     if(!doEnergyWeights_)
-      return spectrum_.sample(randSpectrum_.fire());
+      return spectrum_.sample(randSpectrum_->fire());
     double maxE = energyFunc_->GetMaximum(elow_, ehi_);
     double energy = elow_ + (ehi_-elow_)*randomFlat_.fire();
     double r = randomFlat_.fire();

@@ -1,0 +1,40 @@
+# -*- mode:tcl -*-
+# Test fcl to generate RMC events
+#include "JobConfig/primary/flatE.fcl"
+process_name: RMCTest
+
+services.TimeTracker : {
+	printSummary : true
+	dbOutput : {
+	    filename  : ""
+	    overwrite : false
+	}
+    }
+services.scheduler.wantSummary: true
+
+physics.p1 : [ generate ]
+physics.e1 : [ ]
+physics.trigger_paths : [ p1 ]
+physics.end_paths : [ e1 ]
+
+physics.producers.generate :  @local::EventGenerator.producers.RMCGun
+physics.producers.generate.physics.generateIntConversion : 0 //0 or 1
+
+physics.producers.generate.verbosityLevel : 1 // 0 - 2
+physics.producers.generate.physics.spectrumShape : "flat" //flat, RMC
+physics.producers.generate.physics.kMaxUserSet : true //if using RMC spectrum shape
+physics.producers.generate.physics.kMaxUser : 90.1 //MeV
+physics.producers.generate.physics.ehi  : 93 //MeV
+physics.producers.generate.physics.elow : 85 //MeV
+physics.producers.generate.doHistograms : true 
+
+//generating user defined spectra
+physics.producers.generate.doEnergyWeights : true
+physics.producers.generate.energyFuncString : "1.0/(abs((x-90.0)^4)+0.1)"
+
+physics.producers.generate.doCosWeights : true
+physics.producers.generate.czFuncString : "0.1 + 500.0*max(0.0,0.1-abs(x))"
+
+services.TFileService.fileName: "nts.user.rmcgun.version.sequencer.root"
+outputs.Output.fileName:        "dig.user.rmcgun.version.sequencer.art"
+
