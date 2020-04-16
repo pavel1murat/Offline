@@ -31,7 +31,6 @@
 // Framework includes
 #include "cetlib_except/exception.h"
 #include "messagefacility/MessageLogger/MessageLogger.h"
-#include "fhiclcpp/ParameterSet.h"
 
 // Mu2e includes
 #include "Mu2eG4/inc/physicsListDecider.hh"
@@ -40,24 +39,24 @@
 #include "Mu2eG4/inc/MinDEDXPhysicsList.hh"
 #if G4VERSION>4103
 #include "Mu2eG4/inc/Mu2eEmStandardPhysics_option4.hh"
+#include "Mu2eG4/inc/Mu2eEmStandardPhysics.hh"
 #endif
 #include "Mu2eG4/inc/StepLimiterPhysConstructor.hh"
-#include "Mu2eG4/inc/setMinimumRangeCut.hh"
+#include "Mu2eG4/inc/Mu2eG4CustomizationPhysicsConstructor.hh"
 
-//tmp arrangement
-#include "Mu2eG4/inc/QGSP_BERT_HP_MU2E00.hh"
-#include "Mu2eG4/inc/QGSP_BERT_MU2E00.hh"
-#include "Mu2eG4/inc/Shielding_MU2E00.hh"
-#include "Mu2eG4/inc/Shielding_MU2E01.hh"
-#include "Mu2eG4/inc/Shielding_MU2E02.hh"
-#if G4VERSION<4099
-#include "Mu2eG4/inc/FTFP_BERT_PBAR_MU2E02.hh"
-#endif
+// CLHEP includes
+#include "CLHEP/Units/SystemOfUnits.h"
+
 // G4 includes
 #include "G4PhysListFactory.hh"
 #include "G4VUserPhysicsList.hh"
 #include "G4RadioactiveDecayPhysics.hh"
 #include "G4ErrorPhysicsList.hh"
+#include "G4EmStandardPhysics_option4.hh"
+
+#if G4VERSION>4103
+#include "G4EmParameters.hh"
+#endif
 #if G4VERSION<4099
 #include "QGSP.hh"
 #endif
@@ -65,119 +64,41 @@
 using namespace std;
 
 namespace mu2e{
-  namespace {
-    std::string getPhysicsListName(const fhicl::ParameterSet& pset) {
-      return pset.get<std::string>("physics.physicsListName");
-    }
 
-    bool turnOffRadioactiveDecay(const fhicl::ParameterSet& pset) {
-      return pset.get<bool>("physics.turnOffRadioactiveDecay",false);
-    }
-
-    bool turnOnRadioactiveDecay(const fhicl::ParameterSet& pset) {
-      return pset.get<bool>("physics.turnOnRadioactiveDecay",false);
-    }
-
-    int getDiagLevel(const fhicl::ParameterSet& pset) {
-      return pset.get<int>("debug.diagLevel");
-    }
-
-    std::string getStepperName(const fhicl::ParameterSet& pset) {
-      return pset.get<std::string>("physics.stepper");
-    }
-
-#if G4VERSION>4103
-    bool modifyEMOption4(const fhicl::ParameterSet& pset) {
-      return pset.get<bool>("physics.modifyEMOption4",false);
-    }
-#endif
-
-  }
-
-  G4VUserPhysicsList* physicsListDecider(const fhicl::ParameterSet& pset) {
+  G4VUserPhysicsList* physicsListDecider(const Mu2eG4Config::Physics& phys, const Mu2eG4Config::Debug& debug) {
 
     G4VModularPhysicsList* tmpPL(nullptr);
 
-    const string name = getPhysicsListName(pset);
+    const string name = phys.physicsListName();
 
-    std::cout << __func__ << " invoked with " << name << std::endl;
+    debug.diagLevel()>-1 && G4cout << __func__ << " invoked with " << name << G4endl;
 
     // special cases
     if ( name  == "Minimal" ) {
-      tmpPL = new MinimalPhysicsList();
+      return new MinimalPhysicsList();
     }
 
     else if ( name  == "MinDEDX" ) {
-      tmpPL = new MinDEDXPhysicsList(); // limited EM Processes
+      return new MinDEDXPhysicsList(); // limited EM Processes
     }
 
     else if ( name  == "ErrorPhysicsList" ) {
       // rather special case of G4VUserPhysicsList for Track Error
-      // Propagation, with special Energy Loss implementation 
+      // Propagation, with special Energy Loss implementation
       // (see User's Guide: For Application Developers)
-      return new G4ErrorPhysicsList(); 
-    }
-
-#if G4VERSION<4099
-    else if ( name == "QGSP" ){
-      tmpPL = new QGSP();
-    }
-#endif
-
-    else if ( name == "QGSP_BERT_MU2E00" ){
-      tmpPL = new QGSP_BERT_MU2E00();
-      mf::LogWarning("PHYS") << "This Mu2e Physics List has not been certified";
-      G4cout << "Warning: This Mu2e Physics List has not been certified" << G4endl;
-    }
-
-    else if ( name == "QGSP_BERT_HP_MU2E00" ){
-      tmpPL = new TQGSP_BERT_HP_MU2E00<G4VModularPhysicsList>(pset);
-      mf::LogWarning("PHYS") << "This Mu2e Physics List has not been certified";
-      G4cout << "Warning: This Mu2e Physics List has not been certified" << G4endl;
-    }
-
-    else if ( name == "Shielding_MU2E00" ){
-      tmpPL = new Shielding_MU2E00();
-#if G4VERSION>4099
-      mf::LogWarning("PHYS") << "This Mu2e Physics List has not been certified for use with Geant4 v10+.";
-      G4cout << "Warning: This Mu2e Physics List has not been certified for use with Geant4 v10+." << G4endl;
-#endif
-    }
-
-    else if ( name == "Shielding_MU2E01" ){
-      tmpPL = new TShielding_MU2E01<G4VModularPhysicsList>(pset);
-#if G4VERSION>4099
-      mf::LogWarning("PHYS") << "This Mu2e Physics List has not been certified for use with Geant4 v10+.";
-      cout << "Warning: This Mu2e Physics List has not been certified for use with Geant4 v10+." << endl;
-#endif
-    }
-
-    else if ( name == "Shielding_MU2E02" ){
-      tmpPL = new TShielding_MU2E02<G4VModularPhysicsList>(pset);
-#if G4VERSION>4099
-      mf::LogWarning("PHYS") << "This Mu2e Physics List has not been certified for use with Geant4 v10+.";
-      cout << "Warning: This Mu2e Physics List has not been certified for use with Geant4 v10+." << endl;
-#endif
-    }
-
-    else if ( name == "FTFP_BERT_PBAR_MU2E02" ){
-#if G4VERSION<4099
-      tmpPL = new TFTFP_BERT_PBAR_MU2E02<G4VModularPhysicsList>;
-#endif
-#if G4VERSION>4099
-      mf::LogError("PHYS") << "This Mu2e Physics List has not been certified for use with Geant4 v10+.";
-      cout << "Warning: This Mu2e Physics List has not been certified for use with Geant4 v10+." << endl;
-#endif
+      return new G4ErrorPhysicsList();
     }
 
     // General case
     else {
+
       G4PhysListFactory physListFactory;
-      physListFactory.SetVerbose(getDiagLevel(pset));
+      physListFactory.SetVerbose(debug.diagLevel());
       tmpPL = physListFactory.GetReferencePhysList(name);
+
     }
 
-    if ( !tmpPL ){
+    if ( tmpPL==nullptr ) {
       throw cet::exception("G4CONTROL")
         << "Unable to load physics list named: "
         << name
@@ -185,45 +106,87 @@ namespace mu2e{
     }
 
     // The modular physics list takes ownership of the StepLimiterPhysConstructor.
-    if ( name != "Minimal" ) tmpPL->RegisterPhysics( new StepLimiterPhysConstructor() );
+    tmpPL->RegisterPhysics( new StepLimiterPhysConstructor() );
 
-    if (turnOffRadioactiveDecay(pset)) {
+    // Mu2e Customizations
+    tmpPL->RegisterPhysics( new Mu2eG4CustomizationPhysicsConstructor(&phys, &debug));
+
+    if (phys.turnOffRadioactiveDecay()) {
       tmpPL->RemovePhysics("G4RadioactiveDecay");
     }
-#if G4VERSION>4103
-    if ( modifyEMOption4(pset) && (name.find("_EMZ") != std::string::npos) ) {
-      tmpPL->RemovePhysics(("G4EmStandard_opt4"));
-      if (getDiagLevel(pset)>0) {
-        G4cout << __func__ << " Registering Mu2eEmStandardPhysics_option4" << G4endl;
-      }
-      tmpPL->RegisterPhysics( new Mu2eEmStandardPhysics_option4(getDiagLevel(pset)));
-    }
-#endif
 
-    if ( turnOffRadioactiveDecay(pset) && turnOnRadioactiveDecay(pset) ) {
+    if ( phys.turnOffRadioactiveDecay() && phys.turnOnRadioactiveDecay() ) {
       mf::LogError("Config") << "Inconsistent config";
       G4cout << "Error: turnOnRadioactiveDecay & turnOffRadioactiveDecay on" << G4endl;
       throw cet::exception("BADINPUT")<<" decide on turnOn/OffRadioactiveDecay\n";
     }
 
-    if (turnOnRadioactiveDecay(pset)) {
-      tmpPL->RegisterPhysics(new G4RadioactiveDecayPhysics(getDiagLevel(pset)));
+    if (phys.turnOnRadioactiveDecay()) {
+      tmpPL->RegisterPhysics(new G4RadioactiveDecayPhysics(debug.diagLevel()));
     }
+
+#if G4VERSION>4103
+    // for version 4105 it will need to be rplaced with
+    // emParams->SetMscEnergyLimit(115.0*CLHEP::MeV);
+    if ( phys.modifyEMOption4() && (name.find("_EMZ") != std::string::npos) ) {
+      tmpPL->RemovePhysics(("G4EmStandard_opt4"));
+      if (debug.diagLevel()>0) {
+        G4cout << __func__ << " Registering Mu2eEmStandardPhysics_option4" << G4endl;
+      }
+      tmpPL->RegisterPhysics( new Mu2eEmStandardPhysics_option4(debug.diagLevel()));
+    }
+
+    if ( phys.useEmOption4InTracker() && (name.find("_EMZ") == std::string::npos) ) {
+      // assign Mu2eEmStandard_opt4 to the tracker
+      if (debug.diagLevel()>0) {
+        G4cout << __func__
+               << " Assigning EmStandardPhysics_option4 to the TrackerMother" << G4endl;
+      }
+      G4EmParameters* emParams = G4EmParameters::Instance();
+      // fixme: get the value from fhicl and key on modifyEMOption once using 4105
+      // emParams->SetMscEnergyLimit(115.0*CLHEP::MeV);
+      emParams->AddPhysics("TrackerMother", "G4EmStandard_opt4");
+    }
+
+    if ( phys.modifyEMOption0() && (name.find("_EM") == std::string::npos) ) {
+      tmpPL->RemovePhysics(("G4EmStandard"));
+      if (debug.diagLevel()>0) {
+        G4cout << __func__ << " Registering Mu2eEmStandardPhysics" << G4endl;
+      }
+      tmpPL->RegisterPhysics( new Mu2eEmStandardPhysics(debug.diagLevel()));
+    }
+#endif
 
     // Muon Spin and Radiative decays plus pion muons with spin
-    if ( getDecayMuonsWithSpin(pset) ) {
+    if ( phys.decayMuonsWithSpin() ) {
 
       // requires spin tracking: G4ClassicalRK4WSpin
-      if ( getStepperName(pset) !=  "G4ClassicalRK4WSpin") {
+      if ( phys.stepper() != "G4ClassicalRK4WSpin" &&
+           phys.stepper() != "G4DormandPrince745WSpin" ) {
         mf::LogError("Config") << "Inconsistent config";
-        G4cout << "Error: DecayMuonsWithSpin requires G4ClassicalRK4WSpin stepper" << G4endl;
-        throw cet::exception("BADINPUT")<<" DecayMuonsWithSpin requires G4ClassicalRK4WSpin stepper\n";
+        G4cout << "Error: DecayMuonsWithSpin requires enabling spin tracking" << G4endl;
+        throw cet::exception("BADINPUT")<<" DecayMuonsWithSpin requires enabling spin tracking\n";
       }
 
-      tmpPL-> RegisterPhysics( new DecayMuonsWithSpin(getDiagLevel(pset)));
+      tmpPL->RegisterPhysics( new DecayMuonsWithSpin(debug.diagLevel()));
     }
 
-    if (getDiagLevel(pset) > 0) tmpPL->DumpCutValuesTable();
+    G4double productionCut = phys.minRangeCut();
+    G4double protonProductionCut = phys.protonProductionCut();
+    mf::LogInfo("GEOM_MINRANGECUT")
+      << "Setting production cut to " << productionCut
+      << ", protonProductionCut to " << protonProductionCut << " mm";
+    if (debug.diagLevel() > 0) {
+      G4cout << __func__ << " Setting gamma, e- and e+ production cut"
+             << " to " << productionCut << " mm and for proton to "
+             << protonProductionCut << " mm" << G4endl;
+    }
+    //setCutCmd equivalent:
+    tmpPL->SetDefaultCutValue(productionCut);
+    tmpPL->SetCutValue(protonProductionCut, "proton");
+    // regional cuts (if any) are set during the geometry construction
+
+    if (debug.diagLevel() > 0) tmpPL->DumpCutValuesTable();
 
     return dynamic_cast<G4VUserPhysicsList*>(tmpPL);
 

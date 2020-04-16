@@ -8,7 +8,7 @@ void
 mu2e::StrawDigiMCPrinter::Print(art::Event const& event,
 				std::ostream& os) {
   if(verbose()<1) return;
-  if(_tags.empty()) {
+  if(tags().empty()) {
     // if a list of instances not specified, print all instances
     std::vector< art::Handle<StrawDigiMCCollection> > vah;
     event.getManyByType(vah);
@@ -70,9 +70,10 @@ mu2e::StrawDigiMCPrinter::Print(const mu2e::StrawDigiMC& obj, int ind, std::ostr
   // energy accessor is not protected against bad Ptr
   double energy = 0.0, tenergy0 = 0.0, tenergy1 = 0.0;
   bool eOK = true;
-  for(auto const& ap: obj.stepPointMCs()) {
-    if(!ap.isAvailable()) eOK = false;
-  }
+  if(!obj.strawGasStep(StrawEnd::cal).isAvailable() ||
+      !obj.strawGasStep(StrawEnd::hv).isAvailable() ||
+      !obj.strawGasStep(StrawEnd::cal).isAvailable() ||
+      !obj.strawGasStep(StrawEnd::hv).isAvailable() ) eOK = false;
   if(eOK) {
     energy = obj.energySum();
     tenergy0 = obj.triggerEnergySum(StrawEnd::cal);
@@ -80,8 +81,8 @@ mu2e::StrawDigiMCPrinter::Print(const mu2e::StrawDigiMC& obj, int ind, std::ostr
   }
 
   // now check if the basic StepPointMC's are also available
-  auto const& a0 = obj.stepPointMC(StrawEnd::cal);
-  auto const& a1 = obj.stepPointMC(StrawEnd::hv);
+  auto const& a0 = obj.strawGasStep(StrawEnd::cal);
+  auto const& a1 = obj.strawGasStep(StrawEnd::hv);
 
   if(!(a0.isAvailable() && a1.isAvailable()) ) {
     // give up at this point since basically no accessors work
@@ -96,10 +97,6 @@ mu2e::StrawDigiMCPrinter::Print(const mu2e::StrawDigiMC& obj, int ind, std::ostr
            << obj.wireEndTime(StrawEnd::cal)
        << " " << std::setw(8) << std::setprecision(2) 
            << obj.wireEndTime(StrawEnd::hv)
-       << " " << std::setw(8) << std::setprecision(4) 
-           << obj.driftDistance(StrawEnd::cal)
-       << " " << std::setw(8) << std::setprecision(4) 
-           << obj.driftDistance(StrawEnd::hv)
        << " " << std::setw(8) << std::setprecision(4) << energy
        << " " << std::setw(6) << obj.isCrossTalk(StrawEnd::cal)
        << " " << std::setw(6) << obj.isCrossTalk(StrawEnd::hv)
@@ -113,17 +110,7 @@ mu2e::StrawDigiMCPrinter::Print(const mu2e::StrawDigiMC& obj, int ind, std::ostr
                   << obj.wireEndTime(StrawEnd::cal)
        << " time1: " << std::setw(8) << std::setprecision(2) 
                   << obj.wireEndTime(StrawEnd::hv)
-       << " drift0: " << std::setw(8) << std::setprecision(4) 
-                  << obj.driftDistance(StrawEnd::cal)
-       << " drift1:" << std::setw(8) << std::setprecision(4) 
-                  << obj.driftDistance(StrawEnd::hv)
        << " " ;
-    os << std::endl;
-    os << " driftMid0: " << std::setw(10) << std::setprecision(4) 
-                  << obj.distanceToMid(StrawEnd::cal)
-       << " driftMid1:" << std::setw(10) << std::setprecision(4) 
-                  << obj.distanceToMid(StrawEnd::hv)
-       << " energy: " << std::setw(8) << std::setprecision(4) << energy;
     os << std::endl;
     os << " trigEnergy0: " << std::setw(8) << std::setprecision(4) 
               << tenergy0
@@ -153,22 +140,26 @@ mu2e::StrawDigiMCPrinter::Print(const mu2e::StrawDigiMC& obj, int ind, std::ostr
     if(!a0.isAvailable()) {
       os << " StepPointMC_0: is invalid " << std::endl;
     } else {
+      int isim = -1;
+      if(a0->simParticle()) isim = int(a0->simParticle().key());
       os << " StepPointMC_0: " 
 	 << "   key: " << std::setw(5) << a0.key()
 	 << "   energy: " << std::setw(8) << std::setprecision(6)  
-	       << a0->totalEDep()
-	 << "   Simparticle: " << std::setw(5) << a0->trackId().asInt();
+	       << a0->eDep()
+	 << "   Simparticle: " << std::setw(5) << isim;
       os << std::endl;
     }
 
     if(!a1.isAvailable()) {
       os << " StepPointMC_1: is invalid " << std::endl;
     } else {
+      int isim = -1;
+      if(a1->simParticle()) isim = int(a1->simParticle().key());
       os << " StepPointMC_1: " 
 	 << "   key: " << std::setw(5) << a1.key()
 	 << "   energy: " << std::setw(8) << std::setprecision(4)  
-	       << a1->totalEDep()
-	 << "   SimParticle: " << std::setw(5) << a1->trackId().asInt();
+	       << a1->eDep()
+	 << "   SimParticle: " << std::setw(5) << isim;
       os << std::endl;
     }
   } // verbose=2
@@ -185,17 +176,6 @@ void
 mu2e::StrawDigiMCPrinter::PrintListHeader(std::ostream& os) {
   if(verbose()<1) return;
   os << " ind StrwInd   time0   time1    drift0   drift1   energy    crossTalk\n";
-
-}
-
-void 
-mu2e::StrawDigiMCPrinter::set(const fhicl::ParameterSet& pset) {
-
-  fhicl::ParameterSet localPset = 
-    pset.get<fhicl::ParameterSet>("StrawDigiMCPrinter",fhicl::ParameterSet());
-
-  setVerbose( localPset.get<int>("verbose",verbose()) );
-  _tags = vecstr( localPset.get<vecstr>("inputTags",vecstr()) );
 
 }
 

@@ -1,96 +1,77 @@
-#
-# mix conversion electrons and detmix-cut backgrounds, write out digis
-# datasets:
-# sim.mu2e.cd3-beam-g4s4-detconversion.v566.art
-# sim.mu2e.cd3-detmix-cut.v566b.art
-#
-#include "fcl/minimalMessageService.fcl"
-#include "fcl/standardProducers.fcl"
-#include "fcl/standardServices.fcl"
-#include "TrkDiag/fcl/KalDiag.fcl"
-#include "Validation/fcl/prolog.fcl"
-
-BEGIN_PROLOG
-bgHitFiles: ["/pnfs/mu2e/tape/phy-sim/sim/mu2e/cd3-detmix-cut/v566b/art/ce/cf/sim.mu2e.cd3-detmix-cut.v566b.000004_00001952.art"]
-END_PROLOG
+# Example mixing file for validation, producing 150 events in MDC2018 format.  created by JobConfig/examples/generate_CeEndpointMix.sh
 
 
-process_name : ceMixDigi
+#include "JobConfig/mixing/CeEndpointMix.fcl"
 
-source: { module_type: RootInput }
-
-services : {
-    @table::service.all
-}
-
-physics : {
-   producers: {
-      @table::EventMixing.producers
-      @table::digis.straw.mod
-      @table::digis.cal.mod
-   }
-
-   filters: {
-      @table::EventMixing.filters
-   }
-
-   mixTrigSeq : [
-      @sequence::EventMixing.CD3Mixers ,
-      @sequence::timeSimulation.beam.seq , 
-      @sequence::digis.straw.seq , 
-      @sequence::digis.cal.seq 
-   ]
-
-   trigger_paths: [mixTrigSeq]
-
-   out : [fullOutput]
-   end_paths: [out]
-}
-
-outputs: {
-    fullOutput : {
-      module_type : RootOutput
-      fileName    : @nil
-      outputCommands:
-      [ 
-         //"keep *_*_*_*"
-         "keep *",
-         "drop *_*Mixer_*_*",
-         "drop *_*CaloShowerStep*_*_*",
-         "drop *_protonBunchSummarizer_*_*",
-         "drop *_*TimeMap_*_*",
-         "drop mu2e::StrawDigiMCs_makeSD_*_*",
-         "drop mu2e::StepPointMCart::Ptrss_makeSD_*_*",
-         "drop *_TriggerResults_*_*"
-      ]
-   }
-
-}
-
-
-# print summaries
-services.scheduler.wantSummary: true
-services.TimeTracker.printSummary: true
-
-# histogram file
+source.firstRun: 1002
+source.firstSubRun: 0
+source.maxEvents: 10
+services.SeedService.policy:  autoIncrement
+services.SeedService.maxUniqueEngines: 50
+services.SeedService.baseSeed: 538287721
+physics.filters.ootMixerCRV.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/oot-CRV-cat-cat/MDC2018a/art/ac/fb/sim.mu2e.oot-CRV-cat-cat.MDC2018a.001002_00000660.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/oot-CRV-cat-cat/MDC2018a/art/81/50/sim.mu2e.oot-CRV-cat-cat.MDC2018a.001002_00000060.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/oot-CRV-cat-cat/MDC2018a/art/75/24/sim.mu2e.oot-CRV-cat-cat.MDC2018a.001002_00000270.art"
+]
+physics.filters.neutronMixerCRV.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/neutron-CRV-cat/MDC2018a/art/43/d8/sim.mu2e.neutron-CRV-cat.MDC2018a.001002_00013260.art"
+]
+physics.filters.dioMixerCRV.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/dio-CRV-cat/MDC2018a/art/48/a9/sim.mu2e.dio-CRV-cat.MDC2018a.001002_00019320.art"
+]
+physics.filters.photonMixerCRV.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/photon-CRV-cat/MDC2018a/art/43/88/sim.mu2e.photon-CRV-cat.MDC2018a.001002_00000342.art"
+]
+physics.filters.PSMixerCRV.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/PS-CRV-cut-cat/MDC2018a/art/e0/89/sim.mu2e.PS-CRV-cut-cat.MDC2018a.001002_00000005.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/PS-CRV-cut-cat/MDC2018a/art/64/02/sim.mu2e.PS-CRV-cut-cat.MDC2018a.001002_00000010.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/PS-CRV-cut-cat/MDC2018a/art/08/42/sim.mu2e.PS-CRV-cut-cat.MDC2018a.001002_00000015.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/PS-CRV-cut-cat/MDC2018a/art/2b/8a/sim.mu2e.PS-CRV-cut-cat.MDC2018a.001002_00000000.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/PS-CRV-cut-cat/MDC2018a/art/3e/99/sim.mu2e.PS-CRV-cut-cat.MDC2018a.001002_00000020.art"
+]
+physics.filters.TSMixerCRV.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/TS-CRV-cat-cat/MDC2018a/art/95/f1/sim.mu2e.TS-CRV-cat-cat.MDC2018a.001002_00000005.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/TS-CRV-cat-cat/MDC2018a/art/bd/83/sim.mu2e.TS-CRV-cat-cat.MDC2018a.001002_00000000.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/TS-CRV-cat-cat/MDC2018a/art/b1/55/sim.mu2e.TS-CRV-cat-cat.MDC2018a.001002_00000015.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/TS-CRV-cat-cat/MDC2018a/art/02/db/sim.mu2e.TS-CRV-cat-cat.MDC2018a.001002_00000010.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/TS-CRV-cat-cat/MDC2018a/art/4b/6d/sim.mu2e.TS-CRV-cat-cat.MDC2018a.001002_00000020.art"
+]
+physics.filters.DSMixerCRV.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/DS-CRV-cut-cat/MDC2018a/art/40/7d/sim.mu2e.DS-CRV-cut-cat.MDC2018a.001002_00000010.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/DS-CRV-cut-cat/MDC2018a/art/56/3e/sim.mu2e.DS-CRV-cut-cat.MDC2018a.001002_00000005.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/DS-CRV-cut-cat/MDC2018a/art/3c/c3/sim.mu2e.DS-CRV-cut-cat.MDC2018a.001002_00000015.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/DS-CRV-cut-cat/MDC2018a/art/97/c7/sim.mu2e.DS-CRV-cut-cat.MDC2018a.001002_00000000.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/DS-CRV-cut-cat/MDC2018a/art/37/74/sim.mu2e.DS-CRV-cut-cat.MDC2018a.001002_00000020.art"
+]
+physics.filters.ootMixerTrkCal.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/oot-TrkCal-cat-cat/MDC2018a/art/32/29/sim.mu2e.oot-TrkCal-cat-cat.MDC2018a.001002_00000440.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/oot-TrkCal-cat-cat/MDC2018a/art/2d/5b/sim.mu2e.oot-TrkCal-cat-cat.MDC2018a.001002_00000330.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/oot-TrkCal-cat-cat/MDC2018a/art/23/cc/sim.mu2e.oot-TrkCal-cat-cat.MDC2018a.001002_00000420.art"
+]
+physics.filters.neutronMixerTrkCal.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/neutron-TrkCal-cat/MDC2018a/art/13/c9/sim.mu2e.neutron-TrkCal-cat.MDC2018a.001002_00022100.art"
+]
+physics.filters.dioMixerTrkCal.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/dio-TrkCal-cat/MDC2018a/art/38/93/sim.mu2e.dio-TrkCal-cat.MDC2018a.001002_00012282.art"
+]
+physics.filters.photonMixerTrkCal.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/photon-TrkCal-cat/MDC2018a/art/df/8d/sim.mu2e.photon-TrkCal-cat.MDC2018a.001002_00002376.art"
+]
+physics.filters.flashMixerTrkCal.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/DS-flash-TrkCal-cut-cat/MDC2018a/art/5e/27/sim.mu2e.DS-flash-TrkCal-cut-cat.MDC2018a.001002_00044820.art",
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/DS-flash-TrkCal-cut-cat/MDC2018a/art/2e/64/sim.mu2e.DS-flash-TrkCal-cut-cat.MDC2018a.001002_00012820.art"
+]
+physics.filters.protonMixerTrkCal.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/proton-TrkCal/MDC2018a/art/10/eb/sim.mu2e.proton-TrkCal.MDC2018a.001002_00000140.art"
+]
+physics.filters.deuteronMixerTrkCal.fileNames : [
+"/pnfs/mu2e/tape/phy-sim/sim/mu2e/deuteron-TrkCal/MDC2018a/art/a6/b1/sim.mu2e.deuteron-TrkCal.MDC2018a.001002_00000048.art"
+]
 services.TFileService.fileName: "nts.owner.val-ceMixDigi.dsconf.seq.root"
-# art file 
-outputs.fullOutput.fileName : "dig.owner.val-ceMixDigi.dsconf.seq.art"
-
-# Digitization uses random numbers
-services.SeedService.baseSeed         :  0
-services.SeedService.maxUniqueEngines :  20
-
-# use the default production geometry
-services.GeometryService.inputFile : "JobConfig/common/geom_baseline.txt"
-
-# specify background frame files: these must be define outside this script, 
-# before it is included
-physics.filters.flashMixer.fileNames : @local::bgHitFiles
-physics.filters.ootMixer.fileNames : @local::bgHitFiles
-physics.filters.dioMixer.fileNames : @local::bgHitFiles
-physics.filters.neutronMixer.fileNames : @local::bgHitFiles
-physics.filters.photonMixer.fileNames : @local::bgHitFiles
-physics.filters.protonMixer.fileNames : @local::bgHitFiles
-physics.filters.deuteronMixer.fileNames : @local::bgHitFiles
-
+outputs.Output.fileName : "dig.owner.val-ceMixDigi.dsconf.seq.art"
+mu2emetadata.fcl.prologkeys: [  ]
+mu2emetadata.fcl.inkeys: [ "physics.filters.ootMixerCRV.fileNames", "physics.filters.neutronMixerCRV.fileNames", "physics.filters.dioMixerCRV.fileNames", "physics.filters.photonMixerCRV.fileNames", "physics.filters.PSMixerCRV.fileNames", "physics.filters.TSMixerCRV.fileNames", "physics.filters.DSMixerCRV.fileNames", "physics.filters.ootMixerTrkCal.fileNames", "physics.filters.neutronMixerTrkCal.fileNames", "physics.filters.dioMixerTrkCal.fileNames", "physics.filters.photonMixerTrkCal.fileNames", "physics.filters.flashMixerTrkCal.fileNames", "physics.filters.protonMixerTrkCal.fileNames", "physics.filters.deuteronMixerTrkCal.fileNames" ]
+mu2emetadata.fcl.outkeys: [ "services.TFileService.fileName", "outputs.Output.fileName" ]
+# End code added by generate_fcl:
+#----------------------------------------------------------------

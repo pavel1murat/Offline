@@ -36,6 +36,7 @@ namespace mu2e
   };
 
   TrkPatRecFilter::TrkPatRecFilter(fhicl::ParameterSet const& pset) :
+    art::EDFilter{pset},
     _fitterModuleLabels(pset.get<std::vector<std::string> >("fitterModuleLabels")),
     _trkPatRecInstances(pset.get<std::vector<std::string> >("trkPatRecInstances")),
     _minMomentum(pset.get<double>("minMomentum", -1.0)),
@@ -87,8 +88,8 @@ namespace mu2e
 	const StrawDigiMCCollection* mcdigis = mcdigisHandle.product();
 	for(auto imcdigi = mcdigis->begin(); imcdigi != mcdigis->end(); ++imcdigi){
 	  if( imcdigi->wireEndTime(StrawEnd::cal) > _minCETime ) {
-	    if(imcdigi->stepPointMC(StrawEnd::cal)->simParticle()->genParticle().isNonnull() &&
-		imcdigi->stepPointMC(StrawEnd::cal)->simParticle()->genParticle()->generatorId().id() == GenId::conversionGun) ++ncehits;
+	    if(imcdigi->strawGasStep(StrawEnd::cal)->simParticle()->genParticle().isNonnull() &&
+		imcdigi->strawGasStep(StrawEnd::cal)->simParticle()->genParticle()->generatorId().isConversion()) ++ncehits;
 	  }
 	}
       }

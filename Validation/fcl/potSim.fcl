@@ -1,36 +1,32 @@
 #
 # generate protons on target and simulate through the detector
 #
-
 #include "fcl/minimalMessageService.fcl"
 #include "fcl/standardServices.fcl"
 #include "fcl/standardProducers.fcl"
-#include "Validation/fcl/prolog.fcl"
+
 
 process_name : potSim
 
-services : {
-    @table::service.all
-}
+services : @local::Services.Sim
 
-source : {
-    module_type : EmptyEvent
-}
+source.module_type : EmptyEvent
 
 physics : {
    producers: {
-      @table::generation.POT.mod
-      @table::simulation.default.mod
+      generate: @local::PrimaryProtonGun
+
+      @table::Mu2eG4.producers
     }
 
    filters : {
-      @table::simulation.default.flt
+      g4status: {
+         module_type: FilterStatusG4
+         input: "g4run"
+      }
    }
 
-    all_path : [ 
-      @sequence::generation.POT.seq , 
-      @sequence::simulation.default.seq
-   ]
+    all_path : [  generate, g4run, g4status ]
 
     trigger_paths  : [ all_path ]
     out : [ fullOutput ]
@@ -39,8 +35,13 @@ physics : {
 
 outputs: {
     fullOutput : {
-	module_type : RootOutput
-	fileName    : @nil
+      module_type : RootOutput
+      fileName    : @nil
+      outputCommands : [
+         "keep *_*_*_*",
+	 "drop mu2e::StepPointMCs_*_calorimeterRO_*"
+     ]
+
     }
 }
 
@@ -52,13 +53,13 @@ services.TimeTracker.printSummary: true
 # histogram file
 services.TFileService.fileName : "nts.owner.val-potSim.dsconf.seq.root"
 # art file
-outputs.fullOutput.fileName : "sim.owner.val-potSim.dsconf.seq.art"
+outputs.fullOutput.fileName: "sim.owner.val-potSim.dsconf.seq.art"
 
 # run 1h by default
 source.maxEvents: 500
 
 # Initialze seeding of random engines
-services.SeedService.baseSeed         :  0
+services.SeedService.baseSeed         :  8
 services.SeedService.maxUniqueEngines :  20
 
 # use the geometry on the head

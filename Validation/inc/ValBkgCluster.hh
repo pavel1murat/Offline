@@ -3,8 +3,9 @@
 #define ValBkgCluster_HH_
 
 #include "art/Framework/Principal/Event.h"
-#include "art/Framework/Services/Optional/TFileDirectory.h"
+#include "art_root_io/TFileDirectory.h"
 #include "RecoDataProducts/inc/BkgCluster.hh"
+#include "RecoDataProducts/inc/BkgClusterHit.hh"
 #include "TH1D.h"
 #include <string>
 

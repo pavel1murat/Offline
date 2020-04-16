@@ -30,6 +30,7 @@ namespace mu2e {
   };
 
   ModifyTrackSPM::ModifyTrackSPM(fhicl::ParameterSet const& pset ):
+    art::EDProducer{pset},
     tag_(pset.get<std::string>("productTag")){
     //    std::cout << "DNBug:  have tag_:  " << tag_ << std::endl;
     //    std::cout << "DNBug:  it has instance:  " << tag_.instance() << std::endl;
@@ -43,7 +44,7 @@ namespace mu2e {
 
     //    std::cout << "DNBug have testp for event  " << std::endl;
 
-    unique_ptr<std::vector<mu2e::StepPointMC> > prod = 
+    unique_ptr<std::vector<mu2e::StepPointMC> > prod =
       std::make_unique<std::vector<mu2e::StepPointMC> >();
 
     //    std::cout << "DNBug have created the pointer prod  "  << std::endl;
@@ -53,15 +54,17 @@ namespace mu2e {
     for ( auto oldTSPM : *testp ) {
       //      std::cout << "DNBug:  Step " << ++count << ":  ";
       mu2e::StepPointMC myTSPM(oldTSPM.simParticle(),
-			       oldTSPM.volumeId(),
-			       oldTSPM.totalEDep(),
-			       oldTSPM.nonIonizingEDep(),
-			       oldTSPM.time(),
-			       oldTSPM.properTime(),
-			       oldTSPM.position() + offset,
-			       oldTSPM.momentum(),
-			       oldTSPM.stepLength(),
-			       oldTSPM.endProcessCode() );
+                               oldTSPM.volumeId(),
+                               oldTSPM.totalEDep(),
+                               oldTSPM.nonIonizingEDep(),
+                               oldTSPM.visibleEDep(),
+                               oldTSPM.time(),
+                               oldTSPM.properTime(),
+                               oldTSPM.position() + offset,
+                               oldTSPM.postPosition() + offset,
+                               oldTSPM.momentum(),
+                               oldTSPM.stepLength(),
+                               oldTSPM.endProcessCode() );
       //      std::cout << ".  Made myTSPM." << std::endl;
       prod->push_back(myTSPM);
       //      std::cout << "DNBug:  Pushed it to the prod vector." << std::endl;

@@ -24,7 +24,7 @@
 #include "art/Framework/Principal/Run.h"
 #include "art/Framework/Core/ModuleMacros.h"
 #include "art/Framework/Principal/Handle.h"
-#include "art/Framework/Services/Optional/TFileService.h"
+#include "art_root_io/TFileService.h"
 #include "fhiclcpp/ParameterSet.h"
 #include "GeometryService/inc/GeomHandle.hh"
 #include "GeometryService/inc/DetectorSystem.hh"
@@ -52,8 +52,6 @@ using namespace CLHEP;
 #include "MCDataProducts/inc/StepPointMCCollection.hh"
 #include "MCDataProducts/inc/StepPointMC.hh"
 #include "MCDataProducts/inc/SimParticle.hh"
-#include "MCDataProducts/inc/PointTrajectoryCollection.hh"
-#include "MCDataProducts/inc/PointTrajectory.hh"
 #include "DataProducts/inc/VirtualDetectorId.hh"
 #include "GeneralUtilities/inc/safeSqrt.hh"
 
@@ -188,6 +186,7 @@ namespace mu2e {
   };
 
   TrkExt::TrkExt(fhicl::ParameterSet const& pset):
+    art::EDProducer{pset},
     _g4ModuleLabel(pset.get<std::string>("g4ModuleLabel")),
     _makerModuleLabel(pset.get<std::string>("makerModuleLabel")),
     _fitterModuleLabelArray(pset.get<std::vector<std::string> >("fitterModuleLabelArray")),

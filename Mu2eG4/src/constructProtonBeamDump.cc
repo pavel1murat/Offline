@@ -45,8 +45,6 @@
 #include "Mu2eG4/inc/nestBox.hh"
 #include "Mu2eG4/inc/MaterialFinder.hh"
 #include "Mu2eG4/inc/findMaterialOrThrow.hh"
-#include "Mu2eG4/inc/SensitiveDetectorName.hh"
-#include "Mu2eG4/inc/SensitiveDetectorHelper.hh"
 #include "Mu2eG4/inc/FieldMgr.hh"
 
 #include "Mu2eG4/inc/finishNesting.hh"
@@ -67,12 +65,14 @@ namespace mu2e {
     MaterialFinder materialFinder(config);
 
     G4GeometryOptions* geomOptions = art::ServiceHandle<GeometryService>()->geomOptions();
+    geomOptions->loadEntry( config, "ProtonBeamDumpFront"    , "protonBeamDump.front");
+    geomOptions->loadEntry( config, "ProtonBeamDumpBack"     , "protonBeamDump.back");
     geomOptions->loadEntry( config, "ProtonBeamDumpDirt"     , "protonBeamDump.dirt"       );
     geomOptions->loadEntry( config, "ProtonBeamDumpShielding", "protonBeamDump.shielding"  );
     geomOptions->loadEntry( config, "ProtonBeamDumpCore"     , "protonBeamDump.core"       );
     geomOptions->loadEntry( config, "ProtonBeamDumpMouth"    , "protonBeamDump.mouth"      );
     geomOptions->loadEntry( config, "ProtonBeamNeutronCave"  , "protonBeamDump.neutronCave");
-
+  
 
     static CLHEP::HepRotation shieldingRot(CLHEP::HepRotation::IDENTITY);
     shieldingRot.rotateX( 90*CLHEP::degree);

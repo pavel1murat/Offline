@@ -20,13 +20,14 @@
 // Framework includes
 #include "messagefacility/MessageLogger/MessageLogger.h"
 #include "cetlib_except/exception.h"
+#include "art/Utilities/make_tool.h"
 
 // Mu2e includes
 #include "G4Helper/inc/G4Helper.hh"
-#include "Mu2eG4/inc/constructStudyEnv_v001.hh"
-#include "Mu2eG4/inc/constructStudyEnv_v002.hh"
-#include "Mu2eG4/inc/constructStudyEnv_v003.hh"
-#include "Mu2eG4/inc/constructStudyEnv_v004.hh"
+// #include "Mu2eG4/inc/constructStudyEnv_v001.hh"
+// #include "Mu2eG4/inc/constructStudyEnv_v002.hh"
+// #include "Mu2eG4/inc/constructStudyEnv_v003.hh"
+// #include "Mu2eG4/inc/constructStudyEnv_v004.hh"
 #include "Mu2eG4/inc/Mu2eStudyWorld.hh"
 #include "Mu2eG4/inc/SensitiveDetectorHelper.hh"
 #include "Mu2eG4/inc/MaterialFinder.hh"
@@ -72,25 +73,16 @@ using namespace std;
 
 namespace mu2e {
 
-  Mu2eStudyWorld::Mu2eStudyWorld()
-  {}
-
-  Mu2eStudyWorld::~Mu2eStudyWorld(){
-    // Do not destruct the solids, logical volumes or physical volumes.
-    // G4 looks after that itself.
-  }
-
-  Mu2eStudyWorld::Mu2eStudyWorld(const fhicl::ParameterSet& pset,
+  Mu2eStudyWorld::Mu2eStudyWorld(const Mu2eG4Config::Top& conf,
                                  SensitiveDetectorHelper *sdHelper/*no ownership passing*/)
-    : sdHelper_(sdHelper)
-    , pset_(pset)
-    , writeGDML_(pset.get<bool>("debug.writeGDML"))
-    , gdmlFileName_(pset.get<std::string>("debug.GDMLFileName"))
-    , g4stepperName_(pset.get<std::string>("physics.stepper"))
-    , bfieldMaxStep_(pset.get<double>("physics.bfieldMaxStep"))//unused
-  {
-    _verbosityLevel = pset.get<int>("debug.worldVerbosityLevel");
-  }
+    : Mu2eUniverse(conf.debug())
+    , sdHelper_(sdHelper)
+    , conf_(conf)
+    , writeGDML_(conf.debug().writeGDML())
+    , gdmlFileName_(conf.debug().GDMLFileName())
+    , g4stepperName_(conf.physics().stepper())
+    , bfieldMaxStep_(conf.physics().bfieldMaxStep())//unused
+  {}
 
   // This is the callback called by G4
   G4VPhysicalVolume * Mu2eStudyWorld::construct(){
@@ -121,18 +113,18 @@ namespace mu2e {
     vector<double> worldBoundaries(3,worldHalfLength+outerLayerThickness);
 
     // the canonical World volume
-    VolumeInfo worldVInfo(nestBox("World", 
+    VolumeInfo worldVInfo(nestBox("World",
                                   worldBoundaries,
-                                  worldMaterial, 
-                                  0, 
+                                  worldMaterial,
+                                  0,
                                   G4ThreeVector(),
                                   0, // no parent
                                   0, // we assign this volume copy number 0
-                                  worldBoxVisible, 
-                                  G4Colour::Cyan(), 
+                                  worldBoxVisible,
+                                  G4Colour::Cyan(),
                                   worldBoxSolid,
-                                  forceAuxEdgeVisible, 
-                                  placePV, 
+                                  forceAuxEdgeVisible,
+                                  placePV,
                                   false)); // do not surface check this one
 
     // Now box almost filling up the world to force a step close to
@@ -140,42 +132,43 @@ namespace mu2e {
 
     vector<double> boxInWorldBoundaries(3,worldHalfLength);
 
-    VolumeInfo boxInTheWorldVInfo(nestBox("BoxInTheWorld", 
+    VolumeInfo boxInTheWorldVInfo(nestBox("BoxInTheWorld",
                                           boxInWorldBoundaries,
-                                          worldMaterial, 
+                                          worldMaterial,
                                           0, // no rotation
                                           G4ThreeVector(),
                                           worldVInfo,
                                           1, // we assign this volume copy number 1
-                                          worldBoxVisible, 
-                                          G4Colour::Cyan(), 
+                                          worldBoxVisible,
+                                          G4Colour::Cyan(),
                                           worldBoxSolid,
-                                          forceAuxEdgeVisible, 
-                                          placePV, 
+                                          forceAuxEdgeVisible,
+                                          placePV,
                                           doSurfaceCheck));
 
-    const int seVer = _config.getInt("mu2e.studyEnvVersion",0);
+    std::string simulatedDetector = _geom.pset().get<std::string>("simulatedDetector.tool_type");
 
-    if ( seVer == 1 ) {
-      constructStudyEnv_v001(boxInTheWorldVInfo, _config);
-    } else if ( seVer == 2 ) {
-      constructStudyEnv_v002(boxInTheWorldVInfo, _config);
-    } else if ( seVer == 3 ) {
-      constructStudyEnv_v003(boxInTheWorldVInfo, _config);
-    } else if ( seVer == 4 ) {
-      constructStudyEnv_v004(boxInTheWorldVInfo, _config);
-    } else {
-      throw cet::exception("CONFIG")
-        << __func__ << ": unknown study environment: " << seVer << "\n";
+    if (simulatedDetector != "Mu2e") {
+
+      constructEnv_ = art::make_tool<InitEnvToolBase>(_geom.pset().get<fhicl::ParameterSet>("simulatedDetector"));
+
+      if (constructEnv_) constructEnv_->construct(boxInTheWorldVInfo,_config);
+      else {
+        throw cet::exception("CONFIG") << __func__ << ": unknown study environment: " << simulatedDetector << "\n";
+      }
     }
-
     if ( _verbosityLevel > 0) {
-      cout << __func__ << " world half dimensions     : " 
+      cout << __func__ << " world half dimensions     : "
            << worldBoundaries[0] << ", "
            << worldBoundaries[1] << ", "
            << worldBoundaries[2] << ", "
            << endl;
     }
+
+    // if      ( seVer == 1 ) constructStudyEnv_v001(boxInTheWorldVInfo, _config);
+    // else if ( seVer == 2 ) constructStudyEnv_v002(boxInTheWorldVInfo, _config);
+    // else if ( seVer == 3 ) constructStudyEnv_v003(boxInTheWorldVInfo, _config);
+    // else if ( seVer == 4 ) constructStudyEnv_v004(boxInTheWorldVInfo, _config);
 
     //    sdHelper_->instantiateLVSDs(_config); // needs work in the study case
 
@@ -191,15 +184,15 @@ namespace mu2e {
 
     return worldVInfo.physical;
   }
-    
 
-    
-    void Mu2eStudyWorld::constructSDandField(){
-        
-        std::cout << "We are in Mu2eStudyWorld::constructSDandField()" << std::endl;
-        
-        //constructWorldSD();
-    }
+
+
+  void Mu2eStudyWorld::constructSDandField(){
+
+    std::cout << "We are in Mu2eStudyWorld::constructSDandField()" << std::endl;
+
+    //constructWorldSD();
+  }
 
 
   // Adding a step limiter is a two step process.
@@ -210,7 +203,7 @@ namespace mu2e {
   //    volumes of interest.
   // The net result is specifying a step limiter for pairs of (logical volume, particle species).
   //
-  void Mu2eStudyWorld::constructStepLimiters(){
+  void Mu2eStudyWorld::constructStepLimiters() {
 
     // Maximum step length, in mm.
 

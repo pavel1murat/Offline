@@ -26,7 +26,7 @@ namespace mu2e {
     }
   }
 
-  ComboHit::ComboHit() : _wres(-1.0),_tres(-1.0), _wdist(0.), _time(0.0), _edep(0.0), _qual(0.0), _dtime(0.0), _pathlength(0.0), _hphi(0.0), _ncombo(0), _nsh(0), _pind{0} {}
+  ComboHit::ComboHit() : _wres(-1.0),_tres(-1.0), _wdist(0.), _time(0.0), _edep(0.0), _qual(0.0), _dtime(0.0), _ptime(0.0), _pathlength(0.0), _hphi(0.0), _ncombo(0), _nsh(0), _pind{0} {}
 
   ComboHit::ComboHit(ComboHit const& shp, StrawDigiIndex hi, double phi) : ComboHit(shp)
   {
@@ -165,6 +165,32 @@ namespace mu2e {
     }
   }
 
+  void ComboHitCollection::fillComboHits(art::Event const& event, std::vector<uint16_t> const& indices, CHCIter& iters) const {
+    if(_parent.isValid()){
+    // get the parent handle
+      art::Handle<ComboHitCollection> ph;
+      setParentHandle(event,ph);
+      if(ph.isValid()){
+      // get the parent collection
+	const ComboHitCollection *pc = ph.product();
+	// translate the indices down
+	std::vector<uint16_t> subindices;
+	for(auto index : indices){
+	  ComboHit const& ch = (*this)[index];
+	  for(uint16_t iind = 0;iind < ch.nCombo(); ++iind)
+	    subindices.push_back(ch.index(iind));
+	}
+	pc->fillComboHits(event,subindices,iters);
+      } else {
+	throw cet::exception("RECO")<<"mu2e::ComboHitCollection: Can't find parent collection" << std::endl;
+      }
+    } else {
+// already at lowest level: just translate indices to pointers
+      for(auto index : indices)
+	iters.push_back(std::next(begin(),index));
+    }
+  }
+ 
   bool ComboHitCollection::fillComboHits(art::Event const& event, uint16_t chindex, CHCIter& iters) const {
     bool retval(false);
     iters.clear();
@@ -188,11 +214,19 @@ namespace mu2e {
     return retval; 
   }
 
+  uint16_t ComboHitCollection::nStrawHits() const {
+    uint16_t retval(0);
+    for(auto const& ch : *this )
+      retval += ch.nStrawHits();
+    return retval;
+  }
+
   void ComboHit::print( std::ostream& ost, bool doEndl) const {
     ost << " ComboHit:"
         << " id"      << _sid
         << " time "     << _time
         << " drift time " << _dtime
+        << " prop time " << _ptime
         << " path length " << _pathlength
 	<< " position " << _pos
 	<< " end " << _tend

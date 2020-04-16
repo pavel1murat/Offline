@@ -14,15 +14,13 @@
 #include "MCDataProducts/inc/StepPointMCCollection.hh"
 #include "MCDataProducts/inc/MCTrajectoryPoint.hh"
 #include "Mu2eG4/inc/IMu2eG4Cut.hh"
+#include "Mu2eG4/inc/Mu2eG4Config.hh"
 
 // G4 includes
 #include "CLHEP/Vector/ThreeVector.h"
 #include "G4UserSteppingAction.hh"
 #include "G4TrackStatus.hh"
 #include "G4ThreeVector.hh"
-
-// Art includes
-#include "fhiclcpp/ParameterSet.h"
 
 // Forward declarations outside of mu2e namespace.
 class G4VPhysicalVolume;
@@ -40,7 +38,7 @@ namespace mu2e {
   {
 
   public:
-    Mu2eG4SteppingAction(const fhicl::ParameterSet& pset,
+    Mu2eG4SteppingAction(const Mu2eG4Config::Debug& debug,
                          const std::vector<double>& timeVDtimes,
                          IMu2eG4Cut& steppingCuts,
                          IMu2eG4Cut& commonCuts,
@@ -80,8 +78,6 @@ namespace mu2e {
                          double globalTime );
 
   private:
-    fhicl::ParameterSet pset_;
-
     // owned by Mu2eG4 module.
     IMu2eG4Cut* steppingCuts_;
     IMu2eG4Cut* commonCuts_;
@@ -120,7 +116,7 @@ namespace mu2e {
     CLHEP::Hep3Vector _mu2eOrigin;
 
     // Functions to decide whether or not to kill tracks.
-    bool killTooManySteps ( const G4Track* );
+    bool killTooManySteps ( const G4Track* const);
 
     // A helper function to kill the track and record the reason for killing it.
     void killTrack( G4Track* track, ProcessCode::enum_type code, G4TrackStatus status );

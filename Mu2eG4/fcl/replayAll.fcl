@@ -3,9 +3,8 @@
 # event contains both sets of data products, those created in
 # the first run and those created in the second run.
 #
-# $Id: replayAll.fcl,v 1.1 2014/08/29 16:16:17 knoepfel Exp $
-# $Author: knoepfel $
-# $Date: 2014/08/29 16:16:17 $
+# Author: knoepfel
+#
 
 #include "fcl/minimalMessageService.fcl"
 #include "fcl/standardProducers.fcl"
@@ -19,19 +18,7 @@ source : {
   maxEvents   : -1
 }
 
-services : {
-
-  message               : @local::default_message
-  TFileService          : { fileName : "replayAll.root" }
-  RandomNumberGenerator : { restoreStateLabel :  randomsaver }
-
-  GeometryService        : { inputFile      : "Mu2eG4/geom/geom_common.txt"            }
-  ConditionsService      : { conditionsfile : "Mu2eG4/test/conditions_01.txt"      }
-  GlobalConstantsService : { inputFile      : "Mu2eG4/test/globalConstants_01.txt" }
-  G4Helper               : { }
-  SeedService            : @local::automaticSeeds
-
-}
+services : @local::Services.Sim
 
 physics : {
   producers: {
@@ -86,6 +73,11 @@ outputs: {
   }
 
 }
+
+services.TFileService.fileName : "replayAll.root"
+# be careful when setting restoreStateLabel and make sure that
+# defaultEngineKind is set to "MixMaxRng" by using proper override method
+services.RandomNumberGenerator.restoreStateLabel :  randomsaver
 
 services.SeedService.baseSeed         :  100
 services.SeedService.maxUniqueEngines :  20

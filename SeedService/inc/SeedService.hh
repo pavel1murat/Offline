@@ -17,7 +17,7 @@
 //
 //    SeedService : {
 //       policy           : "autoIncrement"  // Required: Other legal value are listed in SEED_SERVICE_POLICIES
-//       baseSeed         : 0                // Required: An integer >= 0.
+//       baseSeed         : 0                // Required: An integer > 0.
 //       checkRange       : true             // Optional: legal values true or false; defaults to true
 //       maxUniqueEngines : 20               // Required iff checkRange is true.
 //
@@ -99,6 +99,7 @@
 #include "SeedService/inc/EngineId.hh"
 
 // From art and its tool chain.
+#include "art/Framework/Core/detail/EngineCreator.h"
 #include "art/Framework/Services/Optional/RandomNumberGenerator.h"
 #include "art/Framework/Services/Registry/ServiceMacros.h"
 #include "fhiclcpp/ParameterSet.h"
@@ -110,6 +111,7 @@
 // Forward declarations
 namespace art {
   class ActivityRegistry;
+  class ModuleContext;
   class ModuleDescription;
   class Run;
   class SubRun;
@@ -129,7 +131,8 @@ namespace mu2e {
   class SeedService {
   public:
 
-    typedef art::RandomNumberGenerator::seed_t seed_t;
+    //    typedef art::RandomNumberGenerator::seed_t seed_t;
+    using seed_t = long int;
 
     enum Policy {
 #define X(x) x,
@@ -149,6 +152,7 @@ namespace mu2e {
     // Return the seed value for this module label (instance name).
     seed_t getSeed();
     seed_t getSeed( std::string const& instanceName );
+    seed_t getInputSourceSeed(); // to be called from InputSource constructor
 
     // Print known (EngineId,seed) pairs.
     template<class Stream> void print(Stream&) const;
@@ -160,8 +164,8 @@ namespace mu2e {
     // Call backs that will be called by art.
     void preModuleConstruction (art::ModuleDescription const& md);
     void postModuleConstruction(art::ModuleDescription const& md);
-    void preModuleBeginRun     (art::ModuleDescription const& md);
-    void postModuleBeginRun    (art::ModuleDescription const& md);
+    void preModuleBeginRun     (art::ModuleContext const& md);
+    void postModuleBeginRun    (art::ModuleContext const& md);
     void postEndJob();
 
     // Control the level of information messages.
@@ -193,7 +197,7 @@ namespace mu2e {
 
     // Helper functions for all policies
     void setPolicy       ( );
-    void ensureValidState( );
+    void ensureValidState( SeedServiceHelper::EngineId const& id);
     void ensureRange     ( SeedServiceHelper::EngineId const& id, seed_t seed );
     void ensureUnique    ( SeedServiceHelper::EngineId const& id, seed_t seed );
     void parseCommon     ();
@@ -232,5 +236,5 @@ namespace mu2e {
 
 } // namespace mu2e
 
-DECLARE_ART_SERVICE(mu2e::SeedService, LEGACY)
+DECLARE_ART_SERVICE(mu2e::SeedService, SHARED)
 #endif /* SeedService_SeedService_hh */

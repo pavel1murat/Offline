@@ -8,7 +8,7 @@ void
 mu2e::BkgClusterPrinter::Print(art::Event const& event,
 				std::ostream& os) {
   if(verbose()<1) return;
-  if(_tags.empty()) {
+  if(tags().empty()) {
     // if a list of instances not specified, print all instances
     std::vector< art::Handle<BkgClusterCollection> > vah;
     event.getManyByType(vah);
@@ -96,7 +96,7 @@ mu2e::BkgClusterPrinter::Print(const mu2e::BkgCluster& obj, int ind, std::ostrea
     os 
       << "   hits: " ;
     for(auto bch : obj.hits()) {
-      os << " " << std::setw(5) << bch.index();
+      os << " " << std::setw(5) << bch;
     }
     os << std::endl;
   }
@@ -112,17 +112,6 @@ void
 mu2e::BkgClusterPrinter::PrintListHeader(std::ostream& os) {
   if(verbose()<1) return;
   os << "ind           position             time    nhits\n";
-
-}
-
-void 
-mu2e::BkgClusterPrinter::set(const fhicl::ParameterSet& pset) {
-
-  fhicl::ParameterSet localPset = 
-    pset.get<fhicl::ParameterSet>("BkgClusterPrinter",fhicl::ParameterSet());
-
-  setVerbose( localPset.get<int>("verbose",verbose()) );
-  _tags = vecstr( localPset.get<vecstr>("inputTags",vecstr()) );
 
 }
 

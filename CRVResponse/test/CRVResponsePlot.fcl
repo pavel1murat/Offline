@@ -15,7 +15,7 @@ source :
 
 services :
 {
-  RandomNumberGenerator: { }
+  RandomNumberGenerator: {defaultEngineKind: "MixMaxRng" }
   TFileService           : { fileName: "test.root" }
   GeometryService        : { inputFile : "Mu2eG4/geom/geom_common.txt" }
   ConditionsService      : { conditionsfile : "Mu2eG4/test/conditions_01.txt" }
@@ -27,9 +27,7 @@ physics :
 {
   producers:
   {
-    protonTimeMap: { module_type : GenerateProtonTimes }
-    muonTimeMap: { module_type : GenerateMuonLife }
-
+    @table::CommonMC.producers
     @table::CrvResponsePackage.producers
   }
 
@@ -49,7 +47,7 @@ physics :
     }
   }
 
-  an : [protonTimeMap, muonTimeMap, @sequence::CrvResponsePackage.CrvResponseSequence]
+  an : [ @sequence::CommonMC.DigiSim, @sequence::CrvResponsePackage.CrvResponseSequence]
   out: [CrvPlot]
 
   trigger_paths: [an]

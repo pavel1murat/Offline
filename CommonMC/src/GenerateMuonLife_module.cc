@@ -34,10 +34,32 @@
 namespace mu2e {
 
   class GenerateMuonLife : public art::EDProducer {
-
   public:
 
-    explicit GenerateMuonLife(const fhicl::ParameterSet& pset);
+    struct Config {
+      using Name=fhicl::Name;
+      using Comment=fhicl::Comment;
+
+      fhicl::Atom<double> meanLife{
+        Name("meanLife"),
+          Comment("A negative value (default) means use the muon life time in the stopping target material\n"
+                  "as given by the GlobalConstantsService. The particle life time can be overridden\n"
+                  "by providing a positive number here, e.g. for simulating stopped pion daughters."
+                  ),
+          -1.
+          };
+
+      fhicl::Sequence<art::InputTag> InputTimeMaps {
+        Name("InputTimeMaps"),
+          Comment("Pre-exising time offsets that should be transferred to the output."),
+          std::vector<art::InputTag>()
+          };
+
+      fhicl::Atom<int> verbosityLevel{ Name("verbosityLevel"), Comment("Levels 0, 1, and 11 increase the number of printouts.."), 0 };
+    };
+
+    using Parameters = art::EDProducer::Table<Config>;
+    explicit GenerateMuonLife(const Parameters& conf);
 
     virtual void produce(art::Event& e) override;
 
@@ -45,36 +67,40 @@ namespace mu2e {
     CLHEP::RandExponential  rexp_;
     double mean_;
     int  verbosityLevel_;
-
-    static double getMean(const  fhicl::ParameterSet& pset);
+    std::vector<art::ProductToken<SimParticleTimeMap> > inmaps_; // optional input maps
   };
 
   //================================================================
-  GenerateMuonLife::GenerateMuonLife(const fhicl::ParameterSet& pset)
-    : rexp_(createEngine( art::ServiceHandle<SeedService>()->getSeed() ))
-    , mean_(getMean(pset))
-    , verbosityLevel_(pset.get<int>("verbosityLevel", 0))
-  {
-    produces<SimParticleTimeMap>();
-    if(verbosityLevel_ > 0) {
-      std::cout<<"GenerateMuonLife initialized with meanLife = "<<mean_<<std::endl;
-    }
-  }
+  GenerateMuonLife::GenerateMuonLife(const Parameters& conf)
+    : EDProducer{conf}
+    , rexp_(createEngine( art::ServiceHandle<SeedService>()->getSeed() ))
+    , mean_(conf().meanLife())
+    , verbosityLevel_(conf().verbosityLevel())
+    {
+      std::vector<art::InputTag> inmaps = conf().InputTimeMaps();
+      for(auto const& tag : inmaps ){
+        inmaps_.push_back(consumes<SimParticleTimeMap>(tag));
+      }
+      consumesMany<SimParticleCollection>();
+      produces<SimParticleTimeMap>();
 
-  //================================================================
-  double GenerateMuonLife::getMean(const  fhicl::ParameterSet& pset) {
-    double res(0);
-    if(!pset.get_if_present("meanLife", res)) {
-      // use the default
-      GlobalConstantsHandle<PhysicsParams> phyPar;
-      res = phyPar->getDecayTime();
+      if(mean_ <= 0.) {
+        GlobalConstantsHandle<PhysicsParams> phyPar;
+        mean_ = phyPar->getDecayTime();
+      }
+      if(verbosityLevel_ > 0) {
+        std::cout<<"GenerateMuonLife initialized with meanLife = "<<mean_<<std::endl;
+      }
     }
-    return res;
-  }
 
   //================================================================
   void GenerateMuonLife::produce(art::Event& event) {
     std::unique_ptr<SimParticleTimeMap> res(new SimParticleTimeMap);
+    // copy over input maps (if any)
+    for(auto const& token : inmaps_) {
+      auto inmap = event.getValidHandle(token);
+      res->insert(inmap->begin(),inmap->end());
+    }
 
     std::vector<art::Handle<SimParticleCollection> > colls;
     event.getManyByType(colls);
@@ -84,19 +110,23 @@ namespace mu2e {
       for(const auto& iter : *ih) {
         if(iter.second.isPrimary()) {
           art::Ptr<SimParticle> part(ih, iter.first.asUint());
-          if(part->genParticle()->generatorId() == GenId::StoppedParticleReactionGun    ||
-             part->genParticle()->generatorId() == GenId::dioTail                       ||
-             part->genParticle()->generatorId() == GenId::conversionGun                 ||
-             part->genParticle()->generatorId() == GenId::radiativeMuonCapture          ||
-             part->genParticle()->generatorId() == GenId::radiativeMuonCaptureInternal )
+          // don't re-simulate if particle is already present.  This can happen if there is an input map
+          if(res->find(part) == res->end()){
 
-            {
-              (*res)[part] = rexp_.fire(mean_);
-            }
-          else
-            {
-              (*res)[part] = 0;
-            }
+            if(part->genParticle()->generatorId() == GenId::StoppedParticleReactionGun    ||
+               part->genParticle()->generatorId() == GenId::dioTail                       ||
+               part->genParticle()->generatorId().isConversion()  ||
+               part->genParticle()->generatorId() == GenId::ExternalRMC          ||
+               part->genParticle()->generatorId() == GenId::InternalRMC )
+
+              {
+                (*res)[part] = rexp_.fire(mean_);
+              }
+            else
+              {
+                (*res)[part] = 0;
+              }
+          }
         }
       }
     }

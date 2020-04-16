@@ -46,6 +46,8 @@ public:
 
     SimpleConfig const& config() const { return *_config;}
 
+    fhicl::ParameterSet const& pset() const { return _pset; }
+
     G4GeometryOptions const * geomOptions() const { return _g4GeomOptions.get(); }
     G4GeometryOptions       * geomOptions()       { return _g4GeomOptions.get(); }
 
@@ -87,6 +89,8 @@ private:
 
     // The object that parses run-time configuration file.
     std::unique_ptr<SimpleConfig> _config;
+
+    const fhicl::ParameterSet          _pset;
 
     // Load G4 geometry options
     std::unique_ptr<G4GeometryOptions> _g4GeomOptions;
@@ -150,6 +154,7 @@ private:
     // used by G4 to make this info available.
     friend class G4;
     friend class Mu2eG4;
+    friend class Mu2eG4MT; 
     friend class Mu2eG4Study;
     void addWorldG4(const Mu2eHall&);
 
@@ -157,5 +162,5 @@ private:
 
 }
 
-DECLARE_ART_SERVICE(mu2e::GeometryService, LEGACY)
+DECLARE_ART_SERVICE(mu2e::GeometryService, SHARED)
 #endif /* GeometryService_GeometryService_hh */

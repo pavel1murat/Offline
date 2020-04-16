@@ -3,7 +3,7 @@
 #define ValTimeCluster_HH_
 
 #include "art/Framework/Principal/Event.h"
-#include "art/Framework/Services/Optional/TFileDirectory.h"
+#include "art_root_io/TFileDirectory.h"
 #include "RecoDataProducts/inc/TimeCluster.hh"
 #include "TH1D.h"
 #include <string>
@@ -28,6 +28,8 @@ namespace mu2e {
     TH1D* _hy;
     TH1D* _hz;
     TH1D* _ht;
+    TH1D* _hterr;
+    TH1D* _nc;
   };
 }
 

@@ -9,19 +9,15 @@
 //
 //-----------------------------------------------------------------------------
 
-namespace fhicl { class ParameterSet; }
+#include "Mu2eG4/inc/Mu2eG4Config.hh"
 
 namespace mu2e{
-  class SimpleConfig;
 
-  void switchDecayOff( const SimpleConfig& config  );
-  void switchDecayOff( const fhicl::ParameterSet& pset);
+  void switchDecayOff( const Mu2eG4Config::Physics& phys, const Mu2eG4Config::Debug& debug);
 
-  void switchCaptureDModel( const SimpleConfig& config);
-  void switchCaptureDModel( const fhicl::ParameterSet& pset);
+  void switchCaptureDModel( const Mu2eG4Config::Physics& phys, const Mu2eG4Config::Debug& debug);
 
-  void addUserProcesses( const SimpleConfig& config);
-  void addUserProcesses( const fhicl::ParameterSet& pset);
+  void addUserProcesses( const Mu2eG4Config::Physics& phys, const Mu2eG4Config::Debug& debug);
 
 }  // end namespace mu2e
 

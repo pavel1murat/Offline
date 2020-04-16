@@ -19,10 +19,10 @@
 #include "art/Framework/Core/EDProducer.h"
 #include "GeometryService/inc/DetectorSystem.hh"
 #include "art/Framework/Core/ModuleMacros.h"
-#include "art/Framework/Services/Optional/TFileService.h"
+#include "art_root_io/TFileService.h"
 // conditions
 #include "ConditionsService/inc/ConditionsHandle.hh"
-#include "TTrackerGeom/inc/TTracker.hh"
+#include "TrackerGeom/inc/Tracker.hh"
 // root 
 #include "TMath.h"
 #include "TH1F.h"
@@ -41,15 +41,13 @@
 // Utilities
 #include "Mu2eUtilities/inc/SimParticleTimeOffset.hh"
 // diagnostics
-#include "DataProducts/inc/threevec.hh"
 
 #include <algorithm>
 #include <cmath>
 #include "CLHEP/Vector/ThreeVector.h"
+#include "MCDataProducts/inc/StrawGasStep.hh"
 #include "MCDataProducts/inc/StepPointMC.hh"
 #include "MCDataProducts/inc/StepPointMCCollection.hh"
-#include "MCDataProducts/inc/StrawHitMCTruth.hh"
-#include "MCDataProducts/inc/StrawHitMCTruthCollection.hh"
 
 using namespace std; 
 using CLHEP::Hep3Vector;
@@ -183,7 +181,7 @@ namespace mu2e {
     const StrawHitFlagCollection*               _shfcol;
     const StrawDigiMCCollection*                _mcdigis;
 
-    const TTracker*                             _tracker;
+    const Tracker*                              _tracker;
     int                                         _eventNum;
     int                                         _nsh;
 
@@ -228,7 +226,7 @@ namespace mu2e {
 
 //-----------------------------------------------------------------------------
   DeltaFinderAna::DeltaFinderAna(fhicl::ParameterSet const& pset): 
-    //    art::EDProducer(pset), 
+    art::EDProducer(pset), 
     _shTag                 (pset.get<string>       ("strawHitCollectionTag"        )),
     _shfTag                (pset.get<string>       ("strawHitFlagCollectionTag"    )),
     _mcdigisTag            (pset.get<art::InputTag>("strawDigiMCCollectionTag"     )),
@@ -377,7 +375,7 @@ namespace mu2e {
 //----Get data------------------------------------------------------------------------------------------------
   void DeltaFinderAna::beginRun(art::Run& aRun) {
 
-    mu2e::GeomHandle<mu2e::TTracker> ttHandle;
+    mu2e::GeomHandle<mu2e::Tracker> ttHandle;
     _tracker = ttHandle.get();
 
   }
@@ -585,12 +583,12 @@ namespace mu2e {
 
       const mu2e::StrawDigiMC* mcdigi = &_mcdigis->at(i);
 
-      const mu2e::StepPointMC   *stmc;
+      const mu2e::StrawGasStep   *stmc;
       if (mcdigi->wireEndTime(mu2e::StrawEnd::cal) < mcdigi->wireEndTime(mu2e::StrawEnd::hv)) {
-	stmc = mcdigi->stepPointMC(mu2e::StrawEnd::cal).get();
+	stmc = mcdigi->strawGasStep(mu2e::StrawEnd::cal).get();
       }
       else {
-	stmc = mcdigi->stepPointMC(mu2e::StrawEnd::hv ).get();
+	stmc = mcdigi->strawGasStep(mu2e::StrawEnd::hv ).get();
       }
 
       const mu2e::SimParticle* sim = &(*stmc->simParticle());

@@ -38,7 +38,6 @@
 #include "EventGenerator/inc/CosmicFromTH2.hh"
 #include "EventGenerator/inc/FromG4BLFile.hh"
 #include "EventGenerator/inc/ParticleGun.hh"
-#include "EventGenerator/inc/PrimaryProtonGun.hh"
 #include "EventGenerator/inc/CaloCalibGun.hh"
 #include "SeedService/inc/SeedService.hh"
 
@@ -109,6 +108,7 @@ namespace mu2e {
   };
 
   EventGenerator::EventGenerator(fhicl::ParameterSet const& pSet):
+    EDProducer(pSet),
     _configfile(           pSet.get<std::string>("inputfile",             "generatorconfig.txt")),
     _allowReplacement(     pSet.get<bool>       ("allowReplacement",      true)),
     _messageOnReplacement( pSet.get<bool>       ("messageOnReplacement",  false)),
@@ -168,7 +168,6 @@ namespace mu2e {
     bool doParticleGun          = config.getBool( "particleGun.do",      false );
     bool doCosmicDYB            = config.getBool( "cosmicDYB.do",        false );
     bool doCosmicFromTH2        = config.getBool( "cosmicFromTH2.do",    false );
-    bool doPrimaryProtonGun     = config.getBool( "primaryProtonGun.do", false );
     bool doFromG4BLFile         = config.getBool( "fromG4BLFile.do",     false );
     bool doCaloCalibGun         = config.getBool( "caloCalibGun.do",     false );
 
@@ -176,7 +175,6 @@ namespace mu2e {
     if ( doParticleGun)          _generators.push_back( GeneratorBasePtr( new ParticleGun(     _engine,  run, config)) );
     if ( doCosmicDYB)            _generators.push_back( GeneratorBasePtr( new CosmicDYB(       _engine,  run, config)) );
     if ( doCosmicFromTH2)        _generators.push_back( GeneratorBasePtr( new CosmicFromTH2(   _engine,  run, config)) );
-    if ( doPrimaryProtonGun)     _generators.push_back( GeneratorBasePtr( new PrimaryProtonGun(_engine,  run, config)) );
     if ( doFromG4BLFile)         _generators.push_back( GeneratorBasePtr( new FromG4BLFile(    _engine,  run, config)) );
     if ( doCaloCalibGun)         _generators.push_back( GeneratorBasePtr( new CaloCalibGun(    _engine,  run, config)) );
 

@@ -15,12 +15,12 @@ import subprocess
 # return a dictionary with mu2eOpts
 def mu2eEnvironment():
     mu2eOpts = {}
-    if not os.environ.has_key('MU2E_BASE_RELEASE'):
+    if 'MU2E_BASE_RELEASE' not in os.environ:
         raise Exception('You have not specified MU2E_BASE_RELEASE for this build')
     primaryBase = os.environ['MU2E_BASE_RELEASE']
     mu2eOpts["primaryBase"] = primaryBase
 
-    if os.environ.has_key("MU2E_SATELLITE_RELEASE"):
+    if "MU2E_SATELLITE_RELEASE" in os.environ:
         mu2eOpts["satellite"] = True
         mu2eOpts["satelliteBase"] = os.environ["MU2E_SATELLITE_RELEASE"]
         base = mu2eOpts["satelliteBase"]
@@ -33,14 +33,15 @@ def mu2eEnvironment():
     mu2eOpts['libdir'] = base+'/lib'
     mu2eOpts['bindir'] = base+'/bin'
     mu2eOpts['tmpdir'] = base+'/tmp'
+    mu2eOpts['gendir'] = base+'/gen'
 
     envopts = os.environ['MU2E_SETUP_BUILDOPTS'].strip()
-    fsopts  = subprocess.check_output(primaryBase+"/buildopts",shell=True).strip()
+    fsopts  = subprocess.check_output(primaryBase+"/buildopts",shell=True).strip().decode() # decode to convert byte string to text
     if envopts != fsopts:
         raise Exception("ERROR: Inconsistent build options: (MU2E_SETUP_BUILDOPTS vs ./buildopts)\n"
              +"Please source setup.sh after setting new options with buildopts.\n")
 
-    # copy the buildopts to the dicitonary
+    # copy the buildopts to the dictionary
     mu2eOpts["buildopts"] = fsopts
     for line in fsopts.split():
         pp = line.split("=")
@@ -61,10 +62,12 @@ def cppPath(mu2eOpts):
     path = [
         mu2eOpts["primaryBase"],
         os.environ['ART_INC'],
+        os.environ['ART_ROOT_IO_INC'],
         os.environ['CANVAS_INC'],
         os.environ['BTRK_INC'],
         os.environ['MESSAGEFACILITY_INC'],
         os.environ['FHICLCPP_INC'],
+        os.environ['HEP_CONCURRENCY_INC'],
         os.environ['SQLITE_INC'],
         os.environ['CETLIB_INC'],
         os.environ['CETLIB_EXCEPT_INC'],
@@ -77,8 +80,10 @@ def cppPath(mu2eOpts):
         os.environ['TBB_INC'],
         os.environ['MU2E_ARTDAQ_CORE_INC'],
         os.environ['ARTDAQ_CORE_INC'],
+        os.environ['PCIE_LINUX_KERNEL_MODULE_INC'],
         os.environ['TRACE_INC'],
         os.environ['GSL_INC'],
+        os.environ['POSTGRESQL_INC']
         ]
 
     if mu2eOpts['satellite']:
@@ -91,11 +96,14 @@ def libPath(mu2eOpts):
     path = [
         mu2eOpts['primaryBase']+'/lib',
         os.environ['ART_LIB'],
+        os.environ['ART_ROOT_IO_LIB'],
         os.environ['CANVAS_LIB'],
         os.environ['BTRK_LIB'],
         os.environ['MU2E_ARTDAQ_CORE_LIB'],
         os.environ['ARTDAQ_CORE_LIB'],
+        os.environ['PCIE_LINUX_KERNEL_MODULE_LIB'],
         os.environ['MESSAGEFACILITY_LIB'],
+        os.environ['HEP_CONCURRENCY_LIB'],
         os.environ['FHICLCPP_LIB'],
         os.environ['SQLITE_LIB'],
         os.environ['CETLIB_LIB'],
@@ -108,6 +116,7 @@ def libPath(mu2eOpts):
         os.environ['XERCESCROOT']+'/lib',
         os.environ['TBB_LIB'],
         os.environ['GSL_LIB'],
+        os.environ['POSTGRESQL_LIBRARIES']
         ]
 
     if mu2eOpts['satellite']:
@@ -119,8 +128,8 @@ def libPath(mu2eOpts):
 # These are given to scons using its Evironment.MergeFlags call.
 def mergeFlags(mu2eOpts):
     build = mu2eOpts['build']
-    flags = ['-std=c++14','-Wall','-Wno-unused-local-typedefs','-g',
-             '-Werror','-Wl,--no-undefined','-gdwarf-2',
+    flags = ['-std=c++17','-Wall','-Wno-unused-local-typedefs','-g',
+             '-Werror','-Wl,--no-undefined','-gdwarf-2', '-Wl,--as-needed',
              '-Werror=return-type','-Winit-self','-Woverloaded-virtual']
     if build == 'prof':
         flags = flags + [ '-O3', '-fno-omit-frame-pointer', '-DNDEBUG' ]
@@ -134,7 +143,7 @@ def mergeFlags(mu2eOpts):
 def exportedOSEnvironment():
     osenv = {}
     for var in [ 'LD_LIBRARY_PATH',  'GCC_FQ_DIR',  'PATH', 'PYTHONPATH',
-                 'ROOTSYS', 'PYTHON_ROOT', 'PYTHON_DIR' ]:
+                 'ROOTSYS', 'PYTHON_ROOT', 'PYTHON_DIR', 'SQLITE_FQ_DIR' ]:
         if var in os.environ.keys():
             osenv[var] = os.environ[var]
     return osenv
@@ -165,9 +174,26 @@ def sconscriptList(mu2eOpts):
 
 # Make sure the build directories are created
 def makeSubDirs(mu2eOpts):
-    for dir in ['libdir','bindir','tmpdir'] :
+    for dir in ['libdir','bindir','tmpdir', 'gendir'] :
         cmd = "mkdir -p "+mu2eOpts[dir]
         subprocess.call(cmd, shell=True)
+
+#
+# a method for creating build-on-demand targets
+#
+def PhonyTarget(env,name,targets,action):
+    if not isinstance(targets,list):
+        targets = [targets]
+    if env.GetOption('clean'):
+        for t in targets:
+            if os.path.isfile(t):
+                os.remove(t)
+    else:
+        for t in targets:
+            d = os.path.dirname(t)
+            if not os.path.isdir(d):
+                os.makedirs(d)
+    return env.AlwaysBuild(env.Alias(name, [], action))
 
 
 # with -c, scons will remove all dependant files it knows about
@@ -179,12 +205,17 @@ def extraCleanup():
     for top, dirs, files in os.walk("./lib"):
         for name in files:
             ff =  os.path.join(top, name)
-            print "removing file ", ff
+            print("removing file ", ff)
             os.unlink (ff)
 
     for top, dirs, files in os.walk("./tmp"):
         for name in files:
             ff =  os.path.join(top, name)
-            print "removing file ", ff
+            print("removing file ", ff)
             os.unlink (ff)
 
+    for top, dirs, files in os.walk("./gen"):
+        for name in files:
+            ff =  os.path.join(top, name)
+            print("removing file ", ff)
+            os.unlink (ff)

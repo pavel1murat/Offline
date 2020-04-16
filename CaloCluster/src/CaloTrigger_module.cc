@@ -1,8 +1,8 @@
 #include "art/Framework/Core/EDProducer.h"
 #include "art/Framework/Principal/Event.h"
 #include "art/Framework/Core/ModuleMacros.h"
-#include "art/Framework/Services/Optional/TFileService.h"
-#include "art/Framework/Services/Optional/TFileDirectory.h"
+#include "art_root_io/TFileService.h"
+#include "art_root_io/TFileDirectory.h"
 
 #include "GeometryService/inc/GeomHandle.hh"
 #include "CalorimeterGeom/inc/Calorimeter.hh"
@@ -41,6 +41,7 @@ namespace mu2e {
   public:
 
     explicit CaloTrigger(fhicl::ParameterSet const& pset) :
+      art::EDProducer{pset},
       caloDigiModuleLabel_(pset.get<std::string>("caloDigiModuleLabel")),
       digiSampling_(       pset.get<double>("digiSampling")),
       windowPeak_(         pset.get<unsigned>("windowPeak")),
@@ -117,7 +118,7 @@ namespace mu2e {
     extractRecoDigi( caloDigisHandle, *trigSeedsColl);
 
     if ( diagLevel_ > 3 ){
-	printf("[CaloTrigSeed::produce] produced trigSeedsColl size  = %i \n", int(trigSeedsColl->size()));
+      printf("[CaloTrigSeed::produce] produced trigSeedsColl size  = %i \n", int(trigSeedsColl->size()));
     }
     event.put(std::move(trigSeedsColl));
     
@@ -131,7 +132,7 @@ namespace mu2e {
 
   //--------------------------------------------------------------------------------------
   void CaloTrigger::extractRecoDigi(const art::Handle<CaloDigiCollection>& caloDigisHandle,
-					CaloTrigSeedCollection&                 trigSeeds)
+				    CaloTrigSeedCollection&                 trigSeeds)
   {
 
     const CaloDigiCollection& caloDigis(*caloDigisHandle);
@@ -269,8 +270,9 @@ namespace mu2e {
 	float clutime  = (seed->index_+offsetT0_)*digiSampling_-timeCorrection_;
 	
 	// calorimeter trigger variables
-	float tpeak =(seed->index_+offsetT0_)*digiSampling_-timeCorrection_;
-	  
+	float tpeak    = (seed->index_+offsetT0_)*digiSampling_-timeCorrection_;
+	//	int   iSection = cal->crystal(seed->crId_).diskId(); 
+
 	CaloTrigSeed trigseed(idpeak,epeak,tpeak,rpeak,ring1emax,ring1emax2,ring2emax,eDep,clutime,xc,yc);
 	trigSeeds.emplace_back(std::move(trigseed));
       }

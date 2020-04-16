@@ -3,7 +3,7 @@
 #define ValStrawDigiMC_HH_
 
 #include "art/Framework/Principal/Event.h"
-#include "art/Framework/Services/Optional/TFileDirectory.h"
+#include "art_root_io/TFileDirectory.h"
 #include "MCDataProducts/inc/StrawDigiMCCollection.hh"
 #include "TH1D.h"
 #include <string>
@@ -26,8 +26,6 @@ namespace mu2e {
     TH1D* _hN2;
     TH1D* _htime0;
     TH1D* _htime1;
-    TH1D* _hdrift;
-    TH1D* _hdriftM;
     TH1D* _hener;
     TH1D* _henerT;
     TH1D* _hcross;

@@ -10,7 +10,7 @@
 #include "DataProducts/inc/StrawEnd.hh"
 #include "DataProducts/inc/StrawId.hh"
 #include "DataProducts/inc/StrawIdMask.hh"
-#include "RecoDataProducts/inc/XYZVec.hh"
+#include "DataProducts/inc/XYZVec.hh"
 #include "RecoDataProducts/inc/StrawHitFlag.hh"
 #include "RecoDataProducts/inc/StrawHitIndex.hh"
 #include <stdint.h>
@@ -46,7 +46,8 @@ namespace mu2e {
     Float_t helixPhi() const { return _hphi;}
     Float_t time() const { return _time; }
     Float_t driftTime() const { return _dtime; }
-    Float_t correctedTime() const { return _time - _dtime; }
+    Float_t propTime() const { return _ptime; }
+    Float_t correctedTime() const { return _time - _ptime - _dtime; }
     Float_t specificIonization() const { return _edep/_pathlength; }
     Float_t pathLength() const { return _pathlength; }
     Float_t qual() const { return _qual; }
@@ -74,6 +75,7 @@ namespace mu2e {
     Float_t _wdist; // distance from wire center along this direction (agregate)
     Float_t _time, _edep, _qual; // derived StrawHit (agregate) info
     Float_t _dtime; // drift time estimate
+    Float_t _ptime; // prop time estimate
     Float_t _pathlength; // path length estimate
     Float_t _hphi; // azimuth relative to a helix center
     Float_t _xyWeight;       // weight used to perform the x-y circle fit
@@ -86,7 +88,7 @@ namespace mu2e {
     StrawIdMask _mask; // mask for valid StrawId fields
     StrawEnd _tend; // end used to define time measruement
   };
-//  typedef std::vector<mu2e::ComboHit> ComboHitCollection;
+  // ComboHitCollection is a non-trivial subclass of vector which includes navigation of nested ComboHits
   class ComboHitCollection : public std::vector<mu2e::ComboHit> {
     public:
       ComboHitCollection(bool sorted=false) : _sorted(sorted) {}
@@ -98,6 +100,8 @@ namespace mu2e {
       void fillStrawHitIndices(art::Event const& event, uint16_t chindex, std::vector<StrawHitIndex>& shids) const;
       // do this for all the hits in the collection
       void fillStrawHitIndices(art::Event const& event, std::vector<std::vector<StrawHitIndex> >& shids) const;
+      // translate a collection of ComboHits into the lowest-level (straw) combo hits.  This function is recursive
+      void fillComboHits(art::Event const& event, std::vector<uint16_t> const& indices, CHCIter& iters) const;
       // fill a vector of iterators to the ComboHits 1 layer below a given ComboHit.  This is NOT RECURSIVE
       // return value says whether there's a layer below or not (if not, output is empty)
       bool fillComboHits(art::Event const& event, uint16_t chindex, CHCIter& iters) const;
@@ -110,6 +114,7 @@ namespace mu2e {
       // accessors
       art::ProductID const& parent() const { return _parent; }
       bool sorted() const { return _sorted; }
+      uint16_t nStrawHits() const;
     private:
       // reference back to the input ComboHit collection this one references
       // This can be used to chain back to the original StrawHit indices

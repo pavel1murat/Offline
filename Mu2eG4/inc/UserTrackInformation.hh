@@ -15,6 +15,7 @@
 
 // Geant4 includes
 #include "G4VUserTrackInformation.hh"
+#include "G4ThreeVector.hh"
 
 namespace mu2e{
 
@@ -33,16 +34,25 @@ namespace mu2e{
       _muCapCode = code;
     }
 
-    void setStepInfo (double kineticEnergy, int nSteps ) {
-      _preLastStepKE = kineticEnergy;
-      _nSteps = nSteps;
-    }
-
     bool         isForced() const { return _forcedStop; }
     ProcessCode  code()    const { return _code; }
-    double       preLastStepKE() const { return _preLastStepKE; }
-    int          nSteps() const { return _nSteps; }
     ProcessCode  muCapCode() const { return _muCapCode; }
+
+    //  Returns the normalized direction of the momentum
+    const G4ThreeVector& GetMomentumDirection() const {return _momDirection;}
+
+    //  Sets the normalized direction of the momentum (no check)
+    void SetMomentumDirection(const G4ThreeVector &aDirection) {
+      _momDirection = aDirection;
+    }
+
+    //  Returns the kinetic energy
+    G4double GetKineticEnergy() const {return _kinEnergy;};
+
+    //  Sets the kinetic energy
+    void SetKineticEnergy(G4double kEnergy) {
+      _kinEnergy = kEnergy;
+    }
 
     virtual void Print() const;
 
@@ -54,15 +64,15 @@ namespace mu2e{
     // If it did, then this is the reason why.
     ProcessCode _code;
 
-    // Kinetic energy of the particle at the beginning of the last step
-    double _preLastStepKE;
-
-    // Number of G4 steps the track if made of
-    int _nSteps;
-
     // Label of muMinusCaptureAtRest daugter particles (if any)
 
     ProcessCode _muCapCode;
+
+    // quantities recorded by a mu2e special process before geant4
+    // poststepdoits acted
+
+    G4ThreeVector _momDirection;
+    G4double _kinEnergy;
 
   };
 

@@ -10,7 +10,7 @@
 #include "art/Framework/Principal/Handle.h"
 #include "art/Framework/Core/EDAnalyzer.h"
 #include "art/Framework/Core/ModuleMacros.h"
-#include "art/Framework/Services/Optional/TFileService.h"
+#include "art_root_io/TFileService.h"
 // mu2e
 #include "GeneralUtilities/inc/Angles.hh"
 #include "Mu2eUtilities/inc/MVATools.hh"
@@ -69,7 +69,7 @@ namespace mu2e {
       StrawHitFlag _dontuseflag;
       bool _mcdiag, _mcsel, _useshfcol;
       StrawHitFlag  _hsel, _hbkg;
-      int _minnprimary; // minimum # Primary hits to make plots
+      unsigned _minnprimary; // minimum # Primary hits to make plots
       int _mcgen; // MC generator code of primary
       double _targetradius;
       bool _plot;
@@ -85,14 +85,15 @@ namespace mu2e {
       art::InputTag   _shfTag;
       art::InputTag _mcdigisTag;
       art::InputTag _vdmcstepsTag;
+      art::InputTag _primaryTag;
       // cache of event objects
       const ComboHitCollection* _chcol;
       const HelixSeedCollection* _hscol;
       const StrawHitFlagCollection*	  _shfcol;
       const StrawDigiMCCollection* _mcdigis;
       const StepPointMCCollection* _vdmcsteps;
+      const PrimaryParticle* _primary;
       // reco offsets
-      TrkTimeCalculator			_ttcalc;
       // mc time offsets
       SimParticleTimeOffset _toff;
       // Virtual Detector IDs
@@ -118,8 +119,9 @@ namespace mu2e {
       Bool_t _circleConverged, _phizConverged, _helixConverged;
       Float_t _tct0, _tct0err, _ht0, _ht0err;
       RobustHelix _rhel;
-      Int_t _nhits, _nused, _nprimary, _npused, _nptot;
-      Int_t _pdg, _gen, _proc;
+      Int_t _nhits, _nused, _npused, _nptot;
+      unsigned _nprimary;
+      Int_t _pdg, _gen, _proc, _prel;
       vector<HelixHitInfo> _hhinfo;
       vector<HelixHitInfoMC> _hhinfomc;
       RobustHelix _mch;
@@ -138,7 +140,7 @@ namespace mu2e {
     _useshfcol		(pset.get<bool>("UseFlagCollection")),
     _hsel(pset.get<std::vector<std::string> >("HitSelectionBits",vector<string>{"EnergySelection","TimeSelection","RadiusSelection"})),
     _hbkg(pset.get<vector<string> >("HitBackgroundBits",vector<string>{"Background"})),
-    _minnprimary(pset.get<int>("MinimumPrimaryHits",10)),
+    _minnprimary(pset.get<unsigned>("MinimumPrimaryHits",8)),
     _mcgen(pset.get<int>("MCGeneratorCode",2)),
     _targetradius(pset.get<double>("TargetRadius",75)),
     _plot(pset.get<bool>("PlotHelices",false)),
@@ -155,7 +157,7 @@ namespace mu2e {
     _shfTag		(pset.get<string>("StrawHitFlagCollection")),
     _mcdigisTag(pset.get<art::InputTag>("StrawDigiMCCollection","makeSD")),
     _vdmcstepsTag(pset.get<art::InputTag>("VDStepPointMCCollection","detectorFilter:virtualdetector")),
-    _ttcalc            (pset.get<fhicl::ParameterSet>("T0Calculator",fhicl::ParameterSet())),
+    _primaryTag(pset.get<art::InputTag>("PrimaryParticleTag","FindMCPrimary")),
     _toff(pset.get<fhicl::ParameterSet>("TimeOffsets"))
   {
     if(_diag > 0){
@@ -184,12 +186,13 @@ namespace mu2e {
 	_hdiag->Branch("mch",&_mch);
 	_hdiag->Branch("mcmom",&_mcmom,"mcmom/F");
 	_hdiag->Branch("mcpz",&_mcpz,"mcpz/F");
-	_hdiag->Branch("nprimary",&_nprimary,"nprimary/I");
+	_hdiag->Branch("nprimary",&_nprimary,"nprimary/i");
 	_hdiag->Branch("nptot",&_nptot,"nptot/I");
 	_hdiag->Branch("npused",&_npused,"npused/I");
 	_hdiag->Branch("pdg",&_pdg,"pdg/I");
 	_hdiag->Branch("gen",&_gen,"gen/I");
 	_hdiag->Branch("proc",&_proc,"proc/I");
+	_hdiag->Branch("prel",&_prel,"prel/I");
       }
       if(_diag > 1){
 	_hdiag->Branch("hh",&_hhinfo);
@@ -241,7 +244,6 @@ namespace mu2e {
 	_circleConverged = status.hasAllProperties(TrkFitFlag::circleConverged);
 	_phizConverged = status.hasAllProperties(TrkFitFlag::phizConverged);
 	_helixConverged = status.hasAllProperties(TrkFitFlag::helixConverged);
-	art::Ptr<SimParticle> pspp;
 	_nused = 0;
 	std::vector<StrawDigiIndex> sdis;
 	for(size_t ihh = 0;ihh < hhits.size(); ++ihh) {
@@ -249,63 +251,65 @@ namespace mu2e {
 	  hhits.fillStrawDigiIndices(evt,ihh,sdis);
 	  if(!hhit.flag().hasAnyProperty(StrawHitFlag::outlier))_nused += hhit.nStrawHits();
 	}
+	art::Ptr<SimParticle> pspp;
 	if(_mcdiag) {
+	  _nprimary = 0; _pdg = -1; _proc = -1; _gen = -1; _prel = -1;
 	  // get information about the primary particle (produced most hits)
-	  _nprimary = TrkMCTools::primaryParticle(pspp,sdis,_mcdigis);
-	  _nptot = TrkMCTools::countDigis(pspp,_mcdigis);
-	  _pdg = pspp->pdgId();
-	  _proc = pspp->originParticle().creationCode();
-	  if(pspp->genParticle().isNonnull())
-	    _gen = pspp->genParticle()->generatorId().id();
-	  else
-	    _gen = -1;
-	  // fill MC true helix parameters
-	  _mchelixOK = fillMCHelix(pspp);
-	  _mct0 = 0.0;
-	  unsigned nmc = 0;
-	  _npused = 0;
-	  for(size_t ihh = 0;ihh < hhits.size(); ++ihh) {
-	    ComboHit const& hhit = hhits[ihh];
-	    vector<StrawDigiIndex> sdis;
-	    hhits.fillStrawDigiIndices(evt,ihh,sdis);
-	    for(auto idigi : sdis) {
-	      StrawDigiMC const& mcdigi = _mcdigis->at(idigi);
-	      art::Ptr<StepPointMC> spmcp;
-	      if (TrkMCTools::stepPoint(spmcp,mcdigi) >= 0 &&
-		  spmcp->simParticle() == pspp ){
-		++nmc;
-		_mct0 += _toff.timeWithOffsetsApplied(*spmcp);
-		if(!hhit._flag.hasAnyProperty(StrawHitFlag::outlier))++_npused;
+	  MCRelationship mcrel;
+	  TrkMCTools::primaryRelation(*_primary, *_mcdigis,sdis,
+	  pspp, _nprimary, mcrel);
+	  if(_nprimary >= _minnprimary){
+	    _pdg = pspp->pdgId();
+	    _proc = pspp->originParticle().creationCode();
+	    _gen = _primary->primary().generatorId().id();
+	    _nptot = TrkMCTools::countDigis(pspp,_mcdigis);
+	    _prel = mcrel.relationship();
+	    // fill MC true helix parameters
+	    _mchelixOK = fillMCHelix(pspp);
+	    _mct0 = 0.0;
+	    unsigned nmc = 0;
+	    _npused = 0;
+	    for(size_t ihh = 0;ihh < hhits.size(); ++ihh) {
+	      ComboHit const& hhit = hhits[ihh];
+	      vector<StrawDigiIndex> sdis;
+	      hhits.fillStrawDigiIndices(evt,ihh,sdis);
+	      for(auto idigi : sdis) {
+		StrawDigiMC const& mcdigi = _mcdigis->at(idigi);
+		if ( mcdigi.earlyStrawGasStep()->simParticle() == pspp ){
+		  ++nmc;
+		  _mct0 += _toff.timeWithOffsetsApplied(*mcdigi.earlyStrawGasStep());
+		  if(!hhit._flag.hasAnyProperty(StrawHitFlag::outlier))++_npused;
+		}
+	      }
+	      if(_diag > 1){
+		HelixHitInfoMC hhinfomc;
+		StrawDigiMC const& mcdigi = _mcdigis->at(sdis[0]);
+		fillHitInfoMC(pspp,mcdigi,hhinfomc);
+		XYZVec mchpos = hhit.pos(); // sets z position
+		_mch.position(mchpos);
+		hhinfomc._hpos = mchpos;
+		hhinfomc._hphi = _mch.circleAzimuth(hhit.pos().z());
+
+		XYZVec mcdh = hhit.pos() - mchpos;
+		hhinfomc._dwire = mcdh.Dot(hhit.wdir());
+		static XYZVec zaxis(0.0,0.0,1.0); // unit in z direction
+		XYZVec wtdir = zaxis.Cross(hhit.wdir()); // transverse direction to the wire
+		hhinfomc._dtrans = mcdh.Dot(wtdir);
+		_hhinfomc.push_back(hhinfomc);
 	      }
 	    }
-	    if(_diag > 1){
-	      HelixHitInfoMC hhinfomc;
-	      StrawDigiMC const& mcdigi = _mcdigis->at(sdis[0]);
-	      fillHitInfoMC(pspp,mcdigi,hhinfomc);
-	      XYZVec mchpos = hhit.pos(); // sets z position
-	      _mch.position(mchpos);
-	      hhinfomc._hpos = mchpos;
-	      hhinfomc._hphi = _mch.circleAzimuth(hhit.pos().z());
-
-	      XYZVec mcdh = hhit.pos() - mchpos;
-	      hhinfomc._dwire = mcdh.Dot(hhit.wdir());
-	      static XYZVec zaxis(0.0,0.0,1.0); // unit in z direction
-	      XYZVec wtdir = zaxis.Cross(hhit.wdir()); // transverse direction to the wire
-	      hhinfomc._dtrans = mcdh.Dot(wtdir);
-	      _hhinfomc.push_back(hhinfomc);
-	    }
+	    if(nmc > 0)_mct0 /= nmc;
 	  }
-	  if(nmc > 0)_mct0 /= nmc;
 	}
 	// plot if requested and the fit satisfies the requirements
 	if( _plot && hseed._status.hasAllProperties(_plotinc) &&
 	    (!hseed._status.hasAnyProperty(_plotexc))  &&
-	    _nprimary >= _minnprimary && _mcgen == _gen) {
-	    // fill graphs for display
-	    plotXY(evt,pspp,hseed,ihel);
-	    plotZ(evt,pspp,hseed,ihel);
+	    ((!_mcsel) || (_nprimary >= _minnprimary && _mcgen == _gen)) ) {
+	  // fill graphs for display
+	  plotXY(evt,pspp,hseed,ihel);
+	  plotZ(evt,pspp,hseed,ihel);
 	}
-	
+
 	if(_diag > 1){
 	  for(auto const& hhit : hhits) {
 	    HelixHitInfo hhinfo;
@@ -323,7 +327,7 @@ namespace mu2e {
 	    rhel.position(hpos);
 	    hhinfo._hpos = hpos;
 	    hhinfo._hphi = rhel.circleAzimuth(hhit.pos().z());
-// compute the chisquared componentes for this hit
+	    // compute the chisquared componentes for this hit
 	    XYZVec const& wdir = hhit.wdir();
 	    XYZVec wtdir = Geom::ZDir().Cross(wdir); // transverse direction to the wire
 	    XYZVec cvec = PerpVector(hhit.pos() - rhel.center(),Geom::ZDir()); // vector from the circle center to the hit
@@ -369,6 +373,7 @@ namespace mu2e {
     _hscol = 0;
     _mcdigis = 0;
     _vdmcsteps = 0;
+    _primary = 0;
 // nb: getValidHandle does the protection (exception) on handle validity so I don't have to
     auto chH = evt.getValidHandle<ComboHitCollection>(_chTag);
     _chcol = chH.product();
@@ -381,6 +386,8 @@ namespace mu2e {
       _vdmcsteps = mcstepsH.product();
       // update time offsets
       _toff.updateMap(evt);
+      auto pph = evt.getValidHandle<PrimaryParticle>(_primaryTag);
+      _primary = pph.product();
     }
     if(_useshfcol){
       auto shfH = evt.getValidHandle<StrawHitFlagCollection>(_shfTag);
@@ -529,8 +536,8 @@ namespace mu2e {
 	_chcol->fillStrawDigiIndices(evt,ich,sdis);
 	for(auto isd : sdis) { 
 	  StrawDigiMC const& mcdigi = _mcdigis->at(isd);
-	  art::Ptr<StepPointMC> spmcp;
-	  if (TrkMCTools::stepPoint(spmcp,mcdigi) >= 0 && spmcp->simParticle() == pspp){
+	  auto const& spmcp = mcdigi.earlyStrawGasStep();
+	  if ( spmcp->simParticle() == pspp ){
 	    double mcdphi = atan2(spmcp->position().y()-_mch.centery(),spmcp->position().x()-_mch.centerx()) - _mch.circleAzimuth(spmcp->position().z());
 	    mcdphi -= rint(mcdphi/CLHEP::twopi)*CLHEP::twopi;
 	    TMarker* mch = new TMarker(spmcp->position().z(),mcdphi,20);
@@ -710,8 +717,8 @@ namespace mu2e {
 	_chcol->fillStrawDigiIndices(evt,ich,sdis);
 	for(auto isd : sdis) { 
 	  StrawDigiMC const& mcdigi = _mcdigis->at(isd);
-	  art::Ptr<StepPointMC> spmcp;
-	  if (TrkMCTools::stepPoint(spmcp,mcdigi) >= 0 && spmcp->simParticle() == pspp){
+	  auto const& spmcp = mcdigi.earlyStrawGasStep();
+	  if ( spmcp->simParticle() == pspp ){
 	    TMarker* mch = new TMarker(spmcp->position().x()-pcent.x(),spmcp->position().y()-pcent.y(),20);
 	    mch->SetMarkerColor(kBlue);
 	    mch->SetMarkerSize(1);
@@ -742,22 +749,23 @@ namespace mu2e {
 
    void HelixDiag::fillHitInfoMC(const art::Ptr<SimParticle>& pspp, StrawDigiMC const& digimc, HitInfoMC& hinfomc) {
     hinfomc.reset();
-    art::Ptr<SimParticle> spp;
-    art::Ptr<StepPointMC> spmcp;
-    if(TrkMCTools::simParticle(spp,digimc) > 0 && TrkMCTools::stepPoint(spmcp,digimc) >= 0 ){
-      hinfomc._pdg = spp->pdgId();
-      hinfomc._proc = spp->originParticle().creationCode();
-      if(spp->genParticle().isNonnull())
-	hinfomc._gen = spp->genParticle()->generatorId().id();
-      hinfomc._rel = MCRelationship::relationship(pspp,spp);
-      hinfomc._t0 = _toff.timeWithOffsetsApplied(*spmcp);
-    }
-  }
+    auto const& spp = digimc.earlyStrawGasStep()->simParticle();
+    hinfomc._pdg = spp->pdgId();
+    hinfomc._proc = spp->originParticle().creationCode();
+    if(spp->genParticle().isNonnull())
+      hinfomc._gen = spp->genParticle()->generatorId().id();
+    MCRelationship rel(pspp,spp);
+    hinfomc._rel = rel.relationship();
+    hinfomc._t0 = _toff.timeWithOffsetsApplied(*digimc.earlyStrawGasStep());
+   }
 
   bool HelixDiag::fillMCHelix(art::Ptr<SimParticle> const& pspp) {
     bool retval(false);
     GeomHandle<DetectorSystem> det;
     GlobalConstantsHandle<ParticleDataTable> pdt;
+    double charge = pdt->particle(pspp->pdgId()).ref().charge();
+    Hep3Vector pos;
+    Hep3Vector mom;
   // find the earliest step associated with this particle passing the tracker midplane
     cet::map_vector_key trkid = pspp->id();
     auto jmc = _vdmcsteps->end();
@@ -772,14 +780,28 @@ namespace mu2e {
     }
     if(jmc != _vdmcsteps->end()){
       // get momentum and position from this point
-      _mcmom = jmc->momentum().mag();
-      _mcpz = jmc->momentum().z();
-      Hep3Vector pos = det->toDetector(jmc->position());
-      double charge = pdt->particle(pspp->pdgId()).ref().charge();
-      TrkUtilities::RobustHelixFromMom(pos,jmc->momentum(),charge,_bz0,_mch);
+      mom = jmc->momentum();
+      pos = det->toDetector(jmc->position());
       retval = true;
     } else {
-      _mcmom = _mcpz = -1.0;
+    // no vd steps: try to fill from the tracker StepPoints
+      for(auto imcd = _mcdigis->begin();imcd != _mcdigis->end(); ++imcd){
+	auto const& stepptr = imcd->strawGasStep(imcd->earlyEnd());
+	if(stepptr->simParticle() == pspp){
+	  mom = Geom::Hep3Vec(stepptr->momentum());
+	  pos = stepptr->position();
+	  retval = true;
+	  break;
+	}
+      }
+    }
+    if(retval){
+      _mcmom = mom.mag();
+      _mcpz = mom.z();
+      TrkUtilities::RobustHelixFromMom(pos,mom,charge,_bz0,_mch);
+    } else {
+      _mcmom = -1.0;
+      _mcpz = 0.0;
       _mch = RobustHelix();
     }
     return retval;
@@ -799,8 +821,7 @@ namespace mu2e {
   bool
   HelixDiag::primary(art::Ptr<SimParticle> const& pspp, size_t index) {
     StrawDigiMC const& mcdigi = _mcdigis->at(index);
-    art::Ptr<StepPointMC> spmcp;
-    return TrkMCTools::stepPoint(spmcp,mcdigi) >= 0 && spmcp->simParticle() == pspp;
+    return (mcdigi.earlyStrawGasStep()->simParticle() == pspp );
   }
 
   bool

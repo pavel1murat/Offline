@@ -2,8 +2,8 @@
 // refit the rising peak
 
 #include "CaloReco/inc/RawProcessor.hh"
-#include "art/Framework/Services/Optional/TFileDirectory.h" 
-#include "art/Framework/Services/Optional/TFileService.h"
+#include "art_root_io/TFileDirectory.h" 
+#include "art_root_io/TFileService.h"
 
 #include "TH1.h"
 #include "TCanvas.h"
@@ -74,7 +74,7 @@ namespace mu2e {
 
 
       //find location of potential peaks
-      std::vector<int> peakLocation;
+      std::vector<int> peakLocation; 
 
       for (unsigned int iu=windowPeak_;iu<xvec_.size()-windowPeak_;++iu)
       {

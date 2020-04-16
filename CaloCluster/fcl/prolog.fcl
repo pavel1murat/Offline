@@ -13,6 +13,9 @@ END_PROLOG
 
 BEGIN_PROLOG
 
+
+
+
 CaloTrigger : {    
     module_type           : CaloTrigger
     caloDigiModuleLabel   : CaloDigiFromShower
@@ -25,9 +28,10 @@ CaloTrigger : {
     minSeedAmplitude      : 433
     minEnergy             : 50
     timeCorrection        : 20.0
-    adcToEnergy           : 0.0461333
+    adcToEnergy           : 0.0459634#0.0461333
     diagLevel             : 0
 }
+
 
 
 CaloClusterFast :
@@ -39,13 +43,13 @@ CaloClusterFast :
     endTimeBuffer         : 80
     windowPeak            : 2
     minAmplitude          : 20
-    extendSecond          : false
+    extendSecond          : true
     minSeedAmplitude      : 200
     minEnergy             : 50
     timeCorrection        : 20.0
     adcToEnergy           : 0.0461333
     diagLevel             : 0
-    includeCrystalHits    : false
+    includeCrystalHits    : true
 }
 
 
@@ -55,6 +59,7 @@ CaloProtoClusterFromCrystalHit :
   caloCrystalModuleLabel : CaloCrystalHitFromHit
   mainClusterCollName    : mainCluster
   splitClusterCollName   : splitCluster
+  minClusterEnergy	 : 0
   EminSeed               : 10
   ExpandCut              : 1.0
   EnoiseCut              : 1.0
@@ -103,12 +108,10 @@ CaloCluster :
 CaloClusterFast :
 {
    producers : {
-     CaloClusterFast  : @local::CaloClusterFast
+       CaloClusterFast  : @local::CaloClusterFast
+       CaloTrigger      : @local::CaloTrigger
    }
-
    Reco : [ CaloClusterFast ]
 }
-
-
 
 END_PROLOG

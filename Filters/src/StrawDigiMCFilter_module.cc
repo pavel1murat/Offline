@@ -13,7 +13,7 @@
 #include "art/Framework/Principal/Event.h"
 #include "art/Framework/Principal/Run.h"
 #include "art/Framework/Core/ModuleMacros.h"
-#include "art/Framework/Services/Optional/TFileService.h"
+#include "art_root_io/TFileService.h"
 // Other includes
 #include "messagefacility/MessageLogger/MessageLogger.h"
 #include "CLHEP/Vector/ThreeVector.h"
@@ -35,7 +35,7 @@ namespace mu2e {
   private:
 
     unsigned minndigi_;
-    double minpmom_;
+    double minpmom_, maxpmom_;
     std::vector<PDGCode::type> pdgs_;
     int diag_, debug_;
     art::InputTag _mcdigisTag;
@@ -43,8 +43,10 @@ namespace mu2e {
   };
 
   StrawDigiMCFilter::StrawDigiMCFilter(fhicl::ParameterSet const& pset):
+    art::EDFilter{pset},
     minndigi_(pset.get<unsigned>("MinNDigis")),
     minpmom_(pset.get<double>("MinParticleMom")),
+    maxpmom_(pset.get<double>("MaxParticleMom")),
     diag_(pset.get<int>("diagLevel",0)),
     debug_(pset.get<int>("debugLevel",0)),
     _mcdigisTag(pset.get<art::InputTag>("StrawDigiMCCollection","makeSD")){
@@ -64,15 +66,15 @@ namespace mu2e {
     std::map<art::Ptr<SimParticle>,unsigned> pmap;
     for(auto const& mcdigi : *mcdigis) {
     // look at the early end
-      StrawEnd fend(StrawEnd::cal);
-      if(mcdigi.wireEndTime(StrawEnd::hv) < mcdigi.wireEndTime(StrawEnd::cal))
-	fend = StrawEnd(StrawEnd::hv);
-      art::Ptr<StepPointMC>step =  mcdigi.stepPointMC(fend);
+      StrawEnd fend = mcdigi.earlyEnd();
+      auto const& step =  mcdigi.strawGasStep(fend);
       art::Ptr<SimParticle> const& sp = step->simParticle();
-      CLHEP::Hep3Vector const& mom = step->momentum(); // cast to 3-vector
-      if(debug_ > 0)std::cout <<"SimParticle PDG = " << sp->pdgId() << " Mom = " << mom.mag() << std::endl;
-      auto pdgfnd = std::find(pdgs_.begin(),pdgs_.end(),sp->pdgId());
-      if(pdgfnd != pdgs_.end() && mom.mag() > minpmom_){
+      auto const& mom = step->momentum(); // cast to 3-vector
+      if(debug_ > 0)std::cout <<"SimParticle PDG = " << sp->pdgId() << " Mom = " << sqrt(mom.mag2()) << std::endl;
+      bool goodpdg(true);
+      if(pdgs_.size() > 0)
+	goodpdg = std::find(pdgs_.begin(),pdgs_.end(),sp->pdgId()) != pdgs_.end();
+      if(goodpdg && sqrt(mom.mag2()) > minpmom_ && sqrt(mom.mag2()) < maxpmom_ ){
 	auto mapfnd = pmap.find(sp);
 	if(mapfnd == pmap.end()) 
 	  pmap[sp] = 1;

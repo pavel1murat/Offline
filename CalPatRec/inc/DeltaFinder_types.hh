@@ -9,14 +9,12 @@ namespace fhicl {
   class ParameterSet;
 };
 
+#include "DataProducts/inc/StrawId.hh"
 #include "RecoDataProducts/inc/StereoHit.hh"
-// #include "RecoDataProducts/inc/StrawHitPosition.hh"
 #include "RecoDataProducts/inc/ComboHit.hh"
-// #include "RecoDataProducts/inc/StrawHitFlag.hh"
 #include "RecoDataProducts/inc/TimeCluster.hh"
-// #include "RecoDataProducts/inc/XYZVec.hh"
 #include "TrackerGeom/inc/Straw.hh"
-#include "TTrackerGeom/inc/TTracker.hh"
+#include "TrackerGeom/inc/Tracker.hh"
 
 namespace mu2e {
   class Panel;
@@ -41,9 +39,9 @@ namespace mu2e {
     struct DeltaCandidate;
     
     enum {
-      kNStations      = 20,
-      kNFaces         =  4,
-      kNPanelsPerFace =  3
+      kNStations      = StrawId::_nplanes/2,   // number of tracking stations
+      kNFaces         = StrawId::_nfaces*2 ,   // N(faces) per station (4)
+      kNPanelsPerFace = StrawId::_npanels/2    // = 3
     };
     
     struct HitData_t {
@@ -240,7 +238,7 @@ namespace mu2e {
 //-----------------------------------------------------------------------------
     struct Data_t {
       const art::Event*             event;
-      const TTracker*               tracker;
+      const Tracker*                tracker;
       std::string                   strawDigiMCCollectionTag;
       std::string                   ptrStepPointMCVectorCollectionTag;
       std::vector<DeltaSeed*>       seedHolder [kNStations];

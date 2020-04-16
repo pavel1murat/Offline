@@ -5,37 +5,85 @@
 #include "fcl/minimalMessageService.fcl"
 #include "fcl/standardServices.fcl"
 #include "fcl/standardProducers.fcl"
-#include "Validation/fcl/prolog.fcl"
+#include "CRVResponse/fcl/prolog.fcl"
+
+
+BEGIN_PROLOG
+
+CosmicOuterShower: 
+{
+   type: intersection
+   pars: 
+   [
+      { type: plane normal: [  0,  0, -1 ] point : [ -3904, 0, 17000 ] }, //-z
+      { type: plane normal: [  0,  0,  1 ] point : [ -3904, 0, 25000 ] }, //+z
+      { type: plane normal: [  1,  0,  0 ] point : [ -1900, 0, 21000 ] }, //+x
+      { type: plane normal: [ -1,  0,  0 ] point : [ -5900, 0, 21000 ] }, //-x
+      { type: plane normal: [  0,  1,  0 ] point : [ -3904, 1000, 21000 ] }, //+y
+      { type: plane normal: [  0, -1,  0 ] point : [ -3904, -1000, 21000 ] }, //-y
+      { type: kineticEnergy cut: 80.0 }, 
+      { type: pdgId pars: [ 22, 11, -11 ] }
+   ]
+}
+
+inDirt: 
+{
+   type: inVolume
+   pars: [ worldDirtBottom, worldDirtNW, worldDirtSW, worldDirtSE, worldDirtNE ]
+}
+
+SpeedUpCosmics: {
+   type: union
+   pars: 
+   [
+      @local::CosmicOuterShower ,
+      @local::inDirt
+   ]
+}
+END_PROLOG
+
 
 process_name : cosmicSimReco
 
-services : {
-    @table::service.all
-}
+services : @local::Services.Sim
 
-source : {
-    module_type : EmptyEvent
-}
+source.module_type : EmptyEvent
 
 physics : {
    producers: {
-      @table::generation.cosmic.mod
-      @table::simulation.default.mod
-      @table::digis.crv.mod
-      @table::reco.crv.mod
+      generate: {
+         module_type          : EventGenerator
+         inputfile            : "JobConfig/cosmic/genconfig_cosmic_general.txt"
+      }
+      @table::Mu2eG4.producers
+      @table::CommonMC.producers
+      @table::CrvDAQPackage.producers
+      @table::CrvRecoMCPackage.producers
    }
 
    filters : {
-      @table::simulation.default.flt
-      @table::cosmicFilter.mod
+      g4status: {
+         module_type: FilterStatusG4
+         input: "g4run"
+      }
+      cosmicFilter: 
+      {
+	 module_type: FilterG4Out
+	 mainHitInputs : [ "g4run:CRV" ]
+	 extraHitInputs : []
+	 mcTrajectoryInputs : [ ]
+	 vetoDaughters: []
+      }
+
    }
 
-    all_path : [ 
-      @sequence::generation.cosmic.seq , 
-      @sequence::simulation.default.seq , 
-      @sequence::cosmicFilter.seq ,
-      @sequence::digis.crv.seq , 
-      @sequence::reco.crv.seq
+   all_path : [ 
+      generate, 
+      g4run, g4status , 
+      cosmicFilter ,
+      @sequence::CommonMC.DigiSim ,
+      @sequence::CrvDAQPackage.CrvResponseSequence ,
+      @sequence::CrvRecoMCPackage.CrvRecoMCSequence
    ]
 
     trigger_paths  : [ all_path ]
@@ -53,18 +101,26 @@ outputs: {
       [ 
          "keep *_*_*_*",
 	 "drop mu2e::SimParticlemv_g4run_*_*",
-	 "drop mu2e::StepPointMCs_g4run_CRV_*"
+	 "drop mu2e::StepPointMCs_g4run_CRV_*",
+	 "drop *_protonTimeMap_*_*",
+	 "drop *_muonTimeMap_*_*"
       ]
     }
 }
 
-# don't use time simulation
-physics.producers.CrvPhotons.timeOffsets.inputs : []
+# turn off trajectories
+simulation.default.mod.g4run.TrajectoryControl: @local::mu2eg4NoTrajectories
+
+# generate the cosmics at one time
+physics.producers.cosmicTimeMap.tmin : 800
+physics.producers.cosmicTimeMap.tmax : 800
+
 # Larger range cut for the first stage - OK for CRV itself
 physics.producers.g4run.physics.minRangeCut : 1.0 // mm
 
 # stop showers outside the detector
 physics.producers.g4run.Mu2eG4CommonCut : @local::SpeedUpCosmics
+
 # only simulate CRV
 physics.producers.g4run.SDConfig.enableSD : [ CRV ]
 
@@ -91,7 +147,7 @@ outputs.fullOutput.fileName : "mcs.owner.val-cosmicSimReco.dsconf.seq.art"
 source.maxEvents: 50000
 
 // Initialze seeding of random engines
-services.SeedService.baseSeed         :  0
+services.SeedService.baseSeed         :  8
 services.SeedService.maxUniqueEngines :  20
 
 // use the geometry on the head

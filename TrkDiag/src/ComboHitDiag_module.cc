@@ -12,7 +12,7 @@
 #include "art/Framework/Core/EDAnalyzer.h"
 #include "GeometryService/inc/DetectorSystem.hh"
 #include "art/Framework/Core/ModuleMacros.h"
-#include "art/Framework/Services/Optional/TFileService.h"
+#include "art_root_io/TFileService.h"
 // root
 #include "TMath.h"
 #include "TH1F.h"
@@ -60,12 +60,14 @@ namespace mu2e
       SimParticleTimeOffset _toff;
       // diagnostics
       TTree *_chdiag;
+      Int_t _evt; // add event id
       XYZVec _pos; // average position
       XYZVec _wdir; // direction at this position (typically the wire direction)
       Float_t _wdist; // distance from wire center along this direction
       Float_t _wres; // estimated error along this direction
       Float_t _tres; // estimated error perpendicular to this direction
       Float_t _time; // Average time for these
+      Float_t _correcttime, _dtime, _ptime;
       Float_t _edep; // average energy deposit for these
       Float_t _qual; // quality of combination
       Float_t _dz; // z extent
@@ -74,6 +76,7 @@ namespace mu2e
       Int_t _esel,_rsel, _tsel,  _bkgclust, _bkg, _stereo, _tdiv, _isolated, _strawxtalk, _elecxtalk, _calosel;
     // mc diag
       XYZVec _mcpos; // average MC hit position
+      
       Float_t _mctime, _mcdist;
       Int_t _mcpdg, _mcproc, _mcgen; 
 // per-hit diagnostics
@@ -102,12 +105,17 @@ namespace mu2e
       art::ServiceHandle<art::TFileService> tfs;
       // detailed diagnostics
       _chdiag=tfs->make<TTree>("chdiag","combo hit diagnostics");
+      _chdiag->Branch("evt",&_evt,"evt/I");  // add event id
+      _chdiag->Branch("wdist",&_wdist,"wdist/F");
       _chdiag->Branch("pos",&_pos);
       _chdiag->Branch("wdir",&_wdir);
       _chdiag->Branch("wdist",&_wdist,"wdist/F");
       _chdiag->Branch("wres",&_wres,"wres/F");
       _chdiag->Branch("tres",&_tres,"tres/F");
       _chdiag->Branch("time",&_time,"time/F");
+      _chdiag->Branch("correcttime",&_correcttime,"correcttime/F");
+      _chdiag->Branch("dtime",&_time,"dtime/F");
+      _chdiag->Branch("ptime",&_time,"ptime/F");
       _chdiag->Branch("edep",&_edep,"edep/F");
       _chdiag->Branch("qual",&_qual,"qual/F");
       _chdiag->Branch("dz",&_dz,"dz/F");
@@ -143,6 +151,7 @@ namespace mu2e
   void ComboHitDiag::analyze(const art::Event& evt ) {
     // find data in event
     findData(evt);
+    _evt = evt.id().event();  // add event id
     // loop over combo hits
     for(size_t ich = 0;ich < _chcol->size(); ++ich){
       ComboHit const& ch =(*_chcol)[ich];
@@ -151,11 +160,15 @@ namespace mu2e
       _nch = ch.nCombo();
       _strawid = ch.strawId().asUint16();
       _pos = ch.pos();
+      
       _wdir = ch.wdir();
       _wdist = ch.wireDist();
       _wres = ch.wireRes();
       _tres = ch.transRes();
       _time = ch.time();
+      _correcttime = ch.correctedTime();
+      _dtime = ch.driftTime();
+      _ptime = ch.propTime();
       _edep = ch.energyDep();
       _qual = ch.qual();
       StrawHitFlag flag;
@@ -189,6 +202,16 @@ namespace mu2e
 	  if(comp.pos().z() > maxz) maxz = comp.pos().z();
 	  if(comp.pos().z() < minz) minz = comp.pos().z();
 	  ComboHitInfo chi;
+	 
+	  chi._pos= comp.pos();
+	  chi._wdist = comp.wireDist();
+	  chi._wres = comp.wireRes();
+	  chi._tres = comp.transRes();
+	  chi._tdrift = comp.driftTime();
+	  chi._thit = comp.time();
+	  chi._strawid = comp.strawId().straw();
+	  chi._panelid = comp.strawId().panel();
+	
 	  XYZVec dpos = comp.pos()-ch.pos();
 	  chi._dwire = dpos.Dot(ch.wdir());
 	  chi._dwerr = comp.wireRes();
@@ -213,7 +236,7 @@ namespace mu2e
 	  throw cet::exception("DIAG")<<"mu2e::ComboHitDiag: invalid ComboHit" << std::endl;
 	// use the 1st hit to define the MC match; this is arbitrary should be an average FIXME!
 	StrawDigiMC const& mcd1 = _mcdigis->at(shids[0]);
-	art::Ptr<StepPointMC> const& spmcp = mcd1.stepPointMC(StrawEnd::cal);
+	auto const& spmcp = mcd1.strawGasStep(StrawEnd::cal);
 	art::Ptr<SimParticle> spp = spmcp->simParticle();
 	_mctime = _toff.timeWithOffsetsApplied(*spmcp);
 	_mcpdg = spp->pdgId();
@@ -227,13 +250,18 @@ namespace mu2e
 	for(auto shi : shids) {
 	  ComboHitInfoMC chimc;
 	  StrawDigiMC const& mcd = _mcdigis->at(shi);
-	  chimc._rel = MCRelationship::relationship(mcd,mcd1);
+	  //chimc._rel = MCRelationship::relationship(mcd,mcd1);
+	  chimc._mcpos = XYZVec(spmcp->position().x(),spmcp->position().y(), spmcp->position().z() );
+	  
+	  MCRelationship rel(mcd,mcd1);
+	  chimc._rel = rel.relationship();
 	  _chinfomc.push_back(chimc);
 	  // find average MC properties
 	  _mcpos += XYZVec(spmcp->position().x(), spmcp->position().y(), spmcp->position().z());
 	}
 	_mcpos /= shids.size();
 	_mcdist = (_mcpos - cpos).Dot(_wdir);
+	
 
       }
       _chdiag->Fill();

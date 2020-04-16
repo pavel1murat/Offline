@@ -3,7 +3,7 @@
 // This version does not use G4HCofThisEvent etc...
 // Framwork DataProducts are used instead
 //
-// This version only works for the TTracker.  It also allows that the tracker may not
+// This version only works for the Tracker.  It also allows that the tracker may not
 // be centered in its mother volume.
 //
 // Original author Rob Kutschke
@@ -21,13 +21,14 @@
 // Mu2e includes
 #include "Mu2eG4/inc/StrawSD.hh"
 #include "Mu2eG4/inc/Mu2eG4UserHelpers.hh"
+#include "Mu2eG4/inc/SimParticleHelper.hh"
 #include "Mu2eG4/inc/EventNumberList.hh"
 #include "Mu2eG4/inc/PhysicsProcessInfo.hh"
-#include "TTrackerGeom/inc/TTracker.hh"
+#include "TrackerGeom/inc/Tracker.hh"
 #include "GeometryService/inc/GeometryService.hh"
 #include "GeometryService/inc/GeomHandle.hh"
 #include "GeometryService/inc/DetectorSystem.hh"
-#include "GeneralUtilities/inc/TwoLinePCA.hh"
+#include "Mu2eUtilities/inc/TwoLinePCA.hh"
 #include "GeneralUtilities/inc/LinePointPCA.hh"
 #include "ConfigTools/inc/SimpleConfig.hh"
 
@@ -58,39 +59,39 @@ namespace mu2e {
 
     art::ServiceHandle<GeometryService> geom;
 
-    if ( !geom->hasElement<TTracker>() ) {
+    if ( !geom->hasElement<Tracker>() ) {
       throw cet::exception("GEOM")
         << "Expected one of Trackers but did not find it.\n";
     }
 
-    if ( geom->hasElement<TTracker>() ) {
+    if ( geom->hasElement<Tracker>() ) {
 
-      GeomHandle<TTracker> ttracker;
+      GeomHandle<Tracker> tracker;
 
-      const Plane& plane = ttracker->getPlane(0);
+      const Plane& plane = tracker->getPlane(0);
       const Panel& panel = plane.getPanel(0);
 
       _nStrawsPerPanel = panel.nStraws();
       _nStrawsPerPlane = plane.nPanels() * _nStrawsPerPanel;
 
-      _TrackerVersion = config.getInt("TTrackerVersion",3);
+      _TrackerVersion = config.getInt("TrackerVersion",3);
 
       _npanels  = StrawId::_npanels;
       _panelsft = StrawId::_panelsft;
       _planesft = StrawId::_planesft;
 
-      _verbosityLevel = max(verboseLevel,config.getInt("ttracker.verbosityLevel",0)); // Geant4 SD verboseLevel
-      _supportModel   = ttracker->getSupportModel();
+      _verbosityLevel = max(verboseLevel,config.getInt("tracker.verbosityLevel",0)); // Geant4 SD verboseLevel
+      _supportModel   = tracker->getSupportModel();
 
       if ( _TrackerVersion < 3 ) {
         throw cet::exception("StrawSD")
-          << "Expected TTrackerVersion >= 3 but found " << _TrackerVersion <<endl;
+          << "Expected TrackerVersion >= 3 but found " << _TrackerVersion <<endl;
         // esp take a look at the detectorOrigin calculation
       }
 
       if (_verbosityLevel>2) {
-        cout << __func__ << " _nStrawsPerPlane " << _nStrawsPerPlane << endl;
-        cout << __func__ << " _nStrawsPerPanel " << _nStrawsPerPanel << endl;
+        G4cout << __func__ << " _nStrawsPerPlane " << _nStrawsPerPlane << G4endl;
+        G4cout << __func__ << " _nStrawsPerPanel " << _nStrawsPerPanel << G4endl;
       }
 
     }
@@ -103,7 +104,7 @@ namespace mu2e {
 
     if ( _sizeLimit>0 && _currentSize>_sizeLimit ) {
       if( (_currentSize - _sizeLimit)==1 ) {
-        mf::LogWarning("G4") << "Maximum number of particles reached in "
+        mf::LogWarning("G4") << "Maximum number of steps reached in "
                              << SensitiveDetectorName
                              << ": "
                              << _currentSize << endl;
@@ -112,16 +113,16 @@ namespace mu2e {
     }
 
     G4double edep = aStep->GetTotalEnergyDeposit();
-    G4double step = aStep->GetStepLength();
+    G4double stepL = aStep->GetStepLength();
 
     // Skip most points with no energy.
-    if ( edep == 0 ) {
+    if ( edep == 0. ) {
 
       // I am not sure why we get these cases but we do.  Skip them.
-      if ( step == 0. ) {
+      if ( stepL == 0. ) {
         //ProcessCode endCode(_processInfo->
         //                    findAndCount(Mu2eG4UserHelpers::findStepStoppingProcessName(aStep)));
-        //cout << "Weird: " << endCode << endl;
+        //G4cout << "Weird: " << endCode << G4endl;
         return false;
       }
 
@@ -132,22 +133,26 @@ namespace mu2e {
            std::abs(pdgId) == PDGCode::n0 ) return false;
     }
 
-    const G4TouchableHandle & touchableHandle = aStep->GetPreStepPoint()->GetTouchableHandle();
+    G4StepPoint* preStepPoint = aStep->GetPreStepPoint();
+    const G4TouchableHandle & touchableHandle = preStepPoint->GetTouchableHandle();
 
     static G4ThreeVector detectorOrigin = GetTrackerOrigin();
 
     // this is Geant4 SD verboseLevel
     if (_verbosityLevel>2) {
-      cout << __func__ << " detectorOrigin   " << detectorOrigin  << endl;
-      cout << __func__ << " det name         " << touchableHandle->GetVolume(2)->GetName() << endl;
+      G4cout << __func__ << " detectorOrigin   " << detectorOrigin  << G4endl;
+      G4cout << __func__ << " det name         " << touchableHandle->GetVolume(2)->GetName() << G4endl;
     }
 
     // Position at start of step point, in world system and in
     // a system in which the center of the tracking detector is the origin.
-    G4ThreeVector prePosWorld   = aStep->GetPreStepPoint()->GetPosition();
+    G4ThreeVector prePosWorld   = preStepPoint->GetPosition();
     G4ThreeVector prePosTracker = prePosWorld - detectorOrigin;
 
-    G4ThreeVector preMomWorld = aStep->GetPreStepPoint()->GetMomentum();
+    G4ThreeVector postPosWorld = aStep->GetPostStepPoint()->GetPosition();
+    G4ThreeVector postPosTracker = postPosWorld - detectorOrigin;
+
+    G4ThreeVector preMomWorld = preStepPoint->GetMomentum();
 
     G4Event const* event = G4RunManager::GetRunManager()->GetCurrentEvent();
 
@@ -159,25 +164,25 @@ namespace mu2e {
       G4int cn = touchableHandle->GetCopyNumber();
       G4int rn = touchableHandle->GetReplicaNumber();
 
-      cout << __func__ << " copy 0 1 2 3 4 " <<
+      G4cout << __func__ << " copy 0 1 2 3 4 " <<
         setw(4) << touchableHandle->GetCopyNumber(0) <<
         setw(4) << touchableHandle->GetCopyNumber(1) <<
         setw(4) << touchableHandle->GetCopyNumber(2) <<
         setw(4) << touchableHandle->GetCopyNumber(3) <<
-        setw(4) << touchableHandle->GetCopyNumber(4) << endl;
+        setw(4) << touchableHandle->GetCopyNumber(4) << G4endl;
 
-      cout << __func__ << " PV Name Mother Name " <<
+      G4cout << __func__ << " PV Name Mother Name " <<
         touchableHandle->GetVolume(0)->GetName() << " " <<
         touchableHandle->GetVolume(1)->GetName() << " " <<
         touchableHandle->GetVolume(2)->GetName() << " " <<
         touchableHandle->GetVolume(3)->GetName() << " " <<
-        touchableHandle->GetVolume(4)->GetName() << endl;
+        touchableHandle->GetVolume(4)->GetName() << G4endl;
 
-      cout << __func__ << " hit info: event track copyn replican:        " <<
+      G4cout << __func__ << " hit info: event track copyn replican:        " <<
         setw(4) << en << " " <<
         setw(4) << ti << " " <<
         setw(4) << cn << " " <<
-        setw(4) << rn << endl;
+        setw(4) << rn << G4endl;
 
     }
 
@@ -195,18 +200,18 @@ namespace mu2e {
 
       // if (_verbosityLevel>3) {
 
-      //   GeomHandle<TTracker> ttracker;
+      //   GeomHandle<Tracker> tracker;
       //   // print out info based on the old StrawID etc... first
-      //   cout << __func__ <<  " sid, panelNumber, panelNumberShifted, planeNumber, planeNumberShifted, sid, sid2 : "
+      //   G4cout << __func__ <<  " sid, panelNumber, panelNumberShifted, planeNumber, planeNumberShifted, sid, sid2 : "
       //        << setw(6) << sid.asUint16()
       //        << setw(6) << panelNumber
       //        << setw(6) << panelNumberShifted
       //        << setw(6) << planeNumber
       //        << setw(6) << planeNumberShifted;
       //   // print out info based on the StrawID etc...
-      //   const Straw& straw2 = ttracker->getStraw(sid);
-      //   cout << setw(7) << straw2.id()
-      //        << endl;
+      //   const Straw& straw2 = tracker->getStraw(sid);
+      //   G4cout << setw(7) << straw2.id()
+      //        << G4endl;
       // }
 
     } else {
@@ -218,14 +223,14 @@ namespace mu2e {
 
     if (_verbosityLevel>2) {
 
-      cout << __func__ << " hit info: event track panel plane straw:   " <<
+      G4cout << __func__ << " hit info: event track panel plane straw:   " <<
         setw(4) << en << " " <<
         setw(4) << ti << " " <<
         setw(4) << touchableHandle->GetCopyNumber(2) << " " <<
         setw(4) << touchableHandle->GetCopyNumber(3) << " " <<
-        setw(6) << sid.asUint16() << endl;
+        setw(6) << sid.asUint16() << G4endl;
 
-      cout << __func__ << " sid " << sid.asUint16() << endl;
+      G4cout << __func__ << " sid " << sid.asUint16() << G4endl;
 
     }
 
@@ -240,11 +245,13 @@ namespace mu2e {
                                         sid.asUint16(),
                                         edep,
                                         aStep->GetNonIonizingEnergyDeposit(),
-                                        aStep->GetPreStepPoint()->GetGlobalTime(),
-                                        aStep->GetPreStepPoint()->GetProperTime(),
+                                        0., // visible energy deposit; used in scintillators
+                                        preStepPoint->GetGlobalTime(),
+                                        preStepPoint->GetProperTime(),
                                         prePosTracker,
+                                        postPosTracker,
                                         preMomWorld,
-                                        step,
+                                        stepL,
                                         endCode
                                         ));
 
@@ -253,8 +260,8 @@ namespace mu2e {
       // checking if the Geant4 and Geometry Service straw positions agree
 
       art::ServiceHandle<GeometryService> geom;
-      GeomHandle<TTracker> ttracker;
-      const Straw& straw = ttracker->getStraw(sid);
+      GeomHandle<Tracker> tracker;
+      const Straw& straw = tracker->getStraw(sid);
 
       // will compare straw.getMidPoint() with the straw position according to Geant4
 
@@ -271,18 +278,18 @@ namespace mu2e {
 
       if ( _verbosityLevel>4 || diffMag>tolerance) {
 
-        const Plane& plane = ttracker->getPlane(straw.id().getPlane());
+        const Plane& plane = tracker->getPlane(straw.id().getPlane());
         const Panel& panel = plane.getPanel(straw.id().getPanel());
 
-        cout << __func__ << " straw info: event track panel plane straw id: " <<
+        G4cout << __func__ << " straw info: event track panel plane straw id: " <<
           setw(4) << en << " " <<
           setw(4) << ti << " " <<
           setw(4) << straw.id().getPanel() << " " <<
           setw(4) << straw.id().getPlane() << " " <<
           setw(6) << sid.asUint16() << " " <<
-          straw.id() << endl;
+          straw.id() << G4endl;
 
-        cout << __func__ << " straw pos     "
+        G4cout << __func__ << " straw pos     "
              << en << " "
              << ti << " "       <<
           " sid: "             << sid.asUint16() <<
@@ -290,20 +297,19 @@ namespace mu2e {
           //          ", panel.boxOffset " << panel.boxOffset() <<
           ", plane.origin "    << plane.origin() <<
           ", panel.boxRzAngle " << panel.boxRzAngle()/M_PI*180. <<
-          ", plane.rotation "  << plane.rotation() <<
-          endl;
+          G4endl;
 
-        cout << __func__ << " straw pos G4  "
+        G4cout << __func__ << " straw pos G4  "
              << en << " "
              << ti << " "       <<
           " sid: "             << sid.asUint16() <<
           ", straw.MidPoint "   << strawInTracker <<
           ", diff magnitude "   << scientific << diffMag  << fixed <<
-          endl;
+          G4endl;
 
         if (diffMag>tolerance) {
           throw cet::exception("GEOM")
-            << "Inconsistent Straw Positions; incorrect ttracker Geant4 construction?" << endl;
+            << "Inconsistent Straw Positions; incorrect tracker Geant4 construction?" << endl;
         }
       }
     }
@@ -315,7 +321,6 @@ namespace mu2e {
     G4AffineTransform const& toLocal = touchableHandle->GetHistory()->GetTopTransform();
     G4AffineTransform        toWorld = toLocal.Inverse();
 
-    G4ThreeVector postPosWorld = aStep->GetPostStepPoint()->GetPosition();
     G4ThreeVector postPosLocal = toLocal.TransformPoint(postPosWorld);
 
     G4ThreeVector prePosLocal  = toLocal.TransformPoint(prePosWorld);
@@ -344,13 +349,13 @@ namespace mu2e {
     G4ThreeVector localZUnit(0.,0.,1.);
     G4ThreeVector worldZUnit = toWorld.TransformAxis(localZUnit);
 
-    // make sure it works with the constructTTrackerv3
+    // make sure it works with the constructTrackerv3
     //    int copy = touchableHandle->GetCopyNumber();
     int copy = sid.asUint16();
 
     /*
     int eventNo = event->GetEventID();
-    // Works for both TTracker.
+    // Works for both Tracker.
     printf ( "Addhit: %4d %4d %6d %3d %3d | %10.2f %10.2f %10.2f | %10.2f %10.2f %10.2f | %10.7f %10.7f\n",
     eventNo,  _collection->size(), copy,
     aStep->IsFirstStepInVolume(), aStep->IsLastStepInVolume(),
@@ -360,12 +365,12 @@ namespace mu2e {
     fflush(stdout);
     */
 
-    // Reconstruction Geometry for the TTracker.
+    // Reconstruction Geometry for the Tracker.
     art::ServiceHandle<GeometryService> geom;
-    if ( geom->hasElement<TTracker>() ) {
+    if ( geom->hasElement<Tracker>() ) {
 
-      GeomHandle<TTracker> ttracker;
-      const Straw& straw = ttracker->getStraw(StrawId(copy));
+      GeomHandle<Tracker> tracker;
+      const Straw& straw = tracker->getStraw(StrawId(copy));
       G4ThreeVector mid  = straw.getMidPoint();
       G4ThreeVector w    = straw.getDirection();
 
@@ -395,7 +400,7 @@ namespace mu2e {
       //              << newHit->eDep()     << " "
       //              << s                  << " | "
       //              << mid
-      //              << endl;
+      //              << G4endl;
       //       }
 
     }
@@ -415,17 +420,17 @@ namespace mu2e {
   G4ThreeVector StrawSD::GetTrackerOrigin() {
 
     art::ServiceHandle<GeometryService> geom;
-    if ( geom->hasElement<TTracker>() ) {
+    if ( geom->hasElement<Tracker>() ) {
       GeomHandle<DetectorSystem> det;
       CLHEP::Hep3Vector val = det->toMu2e(CLHEP::Hep3Vector());
       if (_verbosityLevel>1) {
-        cout << __func__ << " Detector origin used for making straw hits is: " << val << endl;
+        G4cout << __func__ << " Detector origin used for making straw hits is: " << val << G4endl;
       }
       return val;
     }
 
     throw cet::exception("GEOM")
-      << "StrawSD::GetTrackerOrigin this version only supports the TTracker.\n";
+      << "StrawSD::GetTrackerOrigin this version only supports the Tracker.\n";
   }
 
 } //namespace mu2e

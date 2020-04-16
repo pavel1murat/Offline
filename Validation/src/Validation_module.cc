@@ -7,8 +7,9 @@
 // 
 
 #include "art/Framework/Core/EDAnalyzer.h"
+#include "fhiclcpp/types/Atom.h"
 #include "art/Framework/Core/ModuleMacros.h"
-#include "art/Framework/Services/Optional/TFileService.h"
+#include "art_root_io/TFileService.h"
 #include "Validation/inc/ValStatusG4.hh"
 #include "Validation/inc/ValGenParticle.hh"
 #include "Validation/inc/ValSimParticle.hh"
@@ -29,11 +30,13 @@
 #include "Validation/inc/ValBkgQual.hh"
 #include "Validation/inc/ValTrackSummary.hh"
 #include "Validation/inc/ValTrackClusterMatch.hh"
+#include "Validation/inc/ValHelixSeed.hh"
 #include "Validation/inc/ValKalSeed.hh"
 #include "Validation/inc/ValStrawHitFlag.hh"
 #include "Validation/inc/ValSimParticleTimeMap.hh"
 #include "Validation/inc/ValTimeCluster.hh"
 #include "Validation/inc/ValComboHit.hh"
+#include "Validation/inc/ValTriggerResults.hh"
 
 namespace mu2e {
 
@@ -41,7 +44,19 @@ namespace mu2e {
 
   public:
 
-    explicit Validation(fhicl::ParameterSet const& );
+    struct Config {
+      using Name=fhicl::Name;
+      using Comment=fhicl::Comment;
+
+      fhicl::Atom<int> validation_level{
+	Name("validation_level"), Comment("validation level, 0 to 2"), 1
+	  };
+    };
+
+    // this line is required by art to allow the command line help print
+    typedef art::EDAnalyzer::Table<Config> Parameters;
+
+    explicit Validation(const Parameters& conf);
     void analyze  ( art::Event const&  event  ) override;
     void beginJob () override;
     void endJob () override;
@@ -75,11 +90,13 @@ namespace mu2e {
     std::vector<std::shared_ptr<ValBkgQual>>           _bgql;
     std::vector<std::shared_ptr<ValTrackSummary>>      _trks;
     std::vector<std::shared_ptr<ValTrackClusterMatch>> _mtch;
+    std::vector<std::shared_ptr<ValHelixSeed>>         _hxsd;
     std::vector<std::shared_ptr<ValKalSeed>>           _klsd;
     std::vector<std::shared_ptr<ValStrawHitFlag>>      _shfl;
     std::vector<std::shared_ptr<ValSimParticleTimeMap>> _sptm;
-    std::vector<std::shared_ptr<ValTimeCluster>>        _tmcl;
-    std::vector<std::shared_ptr<ValComboHit>>           _stht;
+    std::vector<std::shared_ptr<ValTimeCluster>>       _tmcl;
+    std::vector<std::shared_ptr<ValComboHit>>          _stht;
+    std::vector<std::shared_ptr<ValTriggerResults>>    _trrs;
 
     // Loop over the products of type T and 
     // call fill() on validation histogram class V to make histograms.
@@ -95,11 +112,9 @@ namespace mu2e {
 
 }
 
-mu2e::Validation::Validation(fhicl::ParameterSet const& pset ):
-  art::EDAnalyzer(pset),
-  _level(0),_count(0){
-  _level = pset.get<int>("validation_level");
-
+mu2e::Validation::Validation(const Parameters& conf):
+  art::EDAnalyzer(conf),
+  _level(conf().validation_level()),_count(0){
 }
 
 void mu2e::Validation::beginJob(){
@@ -129,9 +144,11 @@ void mu2e::Validation::analyze(art::Event const& event){
   analyzeProduct<BkgQualCollection,ValBkgQual>                (_bgql,event);
   analyzeProduct<ComboHitCollection,ValComboHit>              (_stht,event);
   analyzeProduct<TimeClusterCollection,ValTimeCluster>        (_tmcl,event);
+  analyzeProduct<HelixSeedCollection,ValHelixSeed>            (_hxsd,event);
   analyzeProduct<KalSeedCollection,ValKalSeed>                (_klsd,event);
   analyzeProduct<TrackSummaryCollection,ValTrackSummary>      (_trks,event);
   analyzeProduct<TrackClusterMatchCollection,ValTrackClusterMatch>(_mtch,event);
+  analyzeProduct<art::TriggerResults,ValTriggerResults>       (_trrs,event);
 
 }
 
@@ -173,12 +190,18 @@ int mu2e::Validation::analyzeProduct(
     if(fcn=="mu2e::BkgQualDetailmu2e::MVAStructs") 
       fcn="BkgQual";
     if(fcn.find("mu2e::",0)==0) fcn.erase(0,6);
+    if(fcn.find("art::",0)==0) fcn.erase(0,5);
 
     std::string inst = prov->productInstanceName();
     if(inst.size()==0) inst="noName";
     // this verison has processname
     //name = fcn+"_"+prov->moduleLabel()+"_"+prov->processName()+"_"+ inst;
     name = fcn+"_"+prov->moduleLabel()+"_"+ inst;
+
+    // there is a TriggerResults for each procname, need to distinguish them
+    if(fcn.find("TriggerResults",0)==0) {
+      name = name + "_" + prov->processName();
+    }
 
     // see if this instance of this product is already in our list 
     // of products being histogrammed.  If not, add it to the list

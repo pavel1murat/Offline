@@ -1,9 +1,8 @@
-
 #ifndef ValKalSeed_HH_
 #define ValKalSeed_HH_
 
 #include "art/Framework/Principal/Event.h"
-#include "art/Framework/Services/Optional/TFileDirectory.h"
+#include "art_root_io/TFileDirectory.h"
 #include "RecoDataProducts/inc/KalSeed.hh"
 #include "TH1D.h"
 #include <string>
@@ -32,8 +31,13 @@ namespace mu2e {
     TH1D* _hchi2;
     TH1D* _hhasCal;
     TH1D* _hfitCon;
+    TH1D* _hfitConC;
+    TH1D* _hfitConT;
     TH1D* _hp;
+    TH1D* _hpC;
+    TH1D* _hpT;
     TH1D* _hpce;
+    TH1D* _hpcep;
     TH1D* _hpe;
     TH1D* _hD0;
     TH1D* _hPhi0;
@@ -42,8 +46,19 @@ namespace mu2e {
     TH1D* _hTan;
     TH1D* _hCuts;
     TH1D* _hPRes;
+    TH1D* _hCCdisk;
+    TH1D* _hCCEoverP;
+    TH1D* _hCCDt0;
+    TH1D* _hCCDt;
+    TH1D* _hCCDOCA;
+    TH1D* _hCChlen;
+    TH1D* _hCCtlen;
+    TH1D* _hHDrift;
+    TH1D* _hHDOCA;
+    TH1D* _hHEDep;
+    TH1D* _hHPanel;
+    TH1D* _hSRadLen;
+    TH1D* _hSRadLenSum;
   };
 }
-
-
 #endif

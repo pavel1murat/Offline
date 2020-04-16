@@ -12,14 +12,21 @@ from mu2e_helper import mu2e_helper
 mu2eOpts = {}
 
 # add a mu2e debug print option like "--mu2ePrint=5"
-AddOption('--mu2ePrint', dest='mu2ePrint', 
+AddOption('--mu2ePrint', dest='mu2ePrint',
           type='int',nargs=1,default=1,
           help='mu2e print level (0-10) default=1')
 mu2ePrint = GetOption("mu2ePrint")
-
 mu2eOpts["mu2ePrint"] = mu2ePrint
 
-# Check that some important environment variables have been set; 
+# add an option to print only short lines for each target
+AddOption('--mu2eCompactPrint', dest='mu2eCompactPrint',
+          action="store_true",default=False,
+          help='print only a short text line for each target')
+mu2eCompactPrint = GetOption("mu2eCompactPrint")
+
+mu2eOpts["mu2eCompactPrint"] = mu2eCompactPrint
+
+# Check that some important environment variables have been set;
 # result is a dictionary of the options
 moreOpts = sch.mu2eEnvironment()
 mu2eOpts.update(moreOpts)
@@ -38,20 +45,41 @@ if mu2ePrint > 5:
     print ("\nBABARLIBS = ", sch.BaBarLibs())
     print ("\nmerge Flags =",sch.mergeFlags(mu2eOpts))
 
+# if requested, simplfy the text printed per target
+cccomstr = ""
+linkcomstr = ""
+genreflexcomstr = ""
+if mu2eCompactPrint :
+    cccomstr = "Compiling $SOURCE"
+    linkcomstr = "Linking $TARGET"
+    genreflexcomstr = "genreflex ${SOURCES[1]}"
+
 # this the scons object which contains the methods to build code
 env = Environment( CPPPATH = sch.cppPath(mu2eOpts),   # $ART_INC ...
                    LIBPATH = sch.libPath(mu2eOpts),   # /lib, $ART_LIB ...
                    ENV = sch.exportedOSEnvironment(), # LD_LIBRARY_PATH, ROOTSYS, ...
                    FORTRAN = 'gfortran',
-                   BABARLIBS = sch.BaBarLibs()
-                 )
+                   BABARLIBS = sch.BaBarLibs(),
+                   CXXCOMSTR = cccomstr,
+                   SHCXXCOMSTR = cccomstr,
+                   LINKCOMSTR = linkcomstr,
+                   SHLINKCOMSTR= linkcomstr,
+)
+
+# Make the Compilation DB generator available in the environment
+env.Tool('compilation_db')
 
 # Define and register the rule for building dictionaries.
-# sources are classes.h, classes_def.xml, 
+# sources are classes.h, classes_def.xml,
 # targets are dict.cpp, .rootmap and .pcm
 # LIBTEXT is the library for the dict - not a target, only text for names
-genreflex = Builder(action="genreflex ${SOURCES[0]} -s ${SOURCES[1]} $_CPPINCFLAGS -l $LIBTEXT -o ${TARGETS[0]} --fail_on_warnings --rootmap-lib=$LIBTEXT  --rootmap=${TARGETS[1]} $DEBUG_FLAG" )
+genreflex = Builder(action=Action("export HOME="+os.environ["HOME"]+"; "+"genreflex ${SOURCES[0]} -s ${SOURCES[1]} $_CPPINCFLAGS -l $LIBTEXT -o ${TARGETS[0]} --fail_on_warnings --rootmap-lib=$LIBTEXT  --rootmap=${TARGETS[1]} $DEBUG_FLAG",genreflexcomstr))
 env.Append(BUILDERS = {'DictionarySource' : genreflex})
+
+# a generic builder, some files transform to others
+generic = Builder(action="$COMMAND" )
+env.Append(BUILDERS = {'GenericBuild' : generic})
+
 
 # this sets the build flags, like -std=c++14 -Wall -O3, etc
 SetOption('warn', 'no-fortran-cxx-mix')
@@ -71,8 +99,8 @@ env.Append( G4MT = mu2eOpts["g4mt"] )
 Export('env')
 
 # Export the class so that it can be used in the SConscript files
-# For reasons I don't understand, this must come before the env.SConscript(ss) line.
-# also it is undocumented how you can export a class name, not a variable
+# comes before the env.SConscript(ss) line so it is available to SConscripts
+# it is undocumented how you can export a class name, not a variable
 Export('mu2e_helper')
 
 # the list of SConscript files in the directory tree
@@ -81,8 +109,12 @@ ss = sch.sconscriptList(mu2eOpts)
 # make sure lib, bin and tmp are there
 sch.makeSubDirs(mu2eOpts)
 
+# Generate a compile_commands.json
+compileCommands = env.CompilationDatabase('gen/compile_commands.json')
+compileDb = env.Alias("compiledb", compileCommands)
+
 # operate on the SConscript files
-# regular python commands like os.path() are executed immediately as they are encontered, 
+# regular python commands like os.path() are executed immediately as they are encontered,
 # scons builder commands like env.SharedLibrary are examined for dependences and scheduled
 # to be executed in parallel, as possible
 env.SConscript(ss)
@@ -91,6 +123,41 @@ env.SConscript(ss)
 #  this code removes orphan files caused by a parent that was removed
 if ( GetOption('clean') and not COMMAND_LINE_TARGETS):
     sch.extraCleanup()
+
+#
+# create targets that are only built on demand
+#
+
+# make a copy of env with the full build environmentals so it can run exe's
+build_env = env.Clone()
+build_env.Append(ENV=os.environ)
+# a text file of how packages depend on each other: run with 'scons DEPS'
+pts = []
+pts = pts + sch.PhonyTarget(build_env,'DEPS','gen/txt/deps.txt',
+                            'scripts/build/bin/procs.sh DEPS')
+# make the gdml file
+pts = pts + sch.PhonyTarget(build_env,'GDML','gen/gdml/mu2e.gdml',
+                            'scripts/build/bin/procs.sh GDML' )
+# run root fast overlaps check
+pts = pts + sch.PhonyTarget(build_env,'ROVERLAPS',[],
+                            'scripts/build/bin/procs.sh ROVERLAPS' )
+Depends(pts[-1], pts[-2]) # root check requires gdml
+# run g4test_03
+pts = pts + sch.PhonyTarget(build_env,'TEST03',[],
+                            'scripts/build/bin/procs.sh TEST03' )
+# pack git records
+pts = pts + sch.PhonyTarget(build_env,'GITPACK',[],
+                            'scripts/build/bin/procs.sh GITPACK' )
+# remove tmp and intermediate .so files
+pts = pts + sch.PhonyTarget(build_env,'RMSO',[],
+                            'scripts/build/bin/procs.sh RMSO' )
+# a standard validation file (~20min to run)
+pts = pts + sch.PhonyTarget(build_env,'VAL0','gen/val/ceSimReco_5000.root',
+                'scripts/build/bin/procs.sh VAL0' )
+# combine the targets into one
+pt_rel = env.AlwaysBuild(env.Alias('RELEASE', [], '#echo completed release targets'))
+Depends(pt_rel, pts)
+
 
 # This tells emacs to view this file in python mode.
 # Local Variables:

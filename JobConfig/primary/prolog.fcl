@@ -1,5 +1,5 @@
 #
-# Prolog specific to createing primary (signal, signal-like or calibration) particles
+# Prolog specific to creating primary (signal, signal-like or calibration) particles
 #
 #include "JobConfig/beam/prolog.fcl"
 #include "EventGenerator/fcl/prolog.fcl"
@@ -21,9 +21,13 @@ Primary: {
     @table::CaloDigiMC.producers
     @table::CrvDAQPackage.producers
 # dedicated digi maker for filter
+# 2 stages now
+    makeSGS : {
+      module_type : MakeStrawGasSteps
+      KeepDeltasModule : "g4run" # don'e compress deltas on primary particles
+    }
     makeSD:{
       @table::makeSD
-      TimeOffsets : { inputs : [ @sequence::CommonMC.TimeMaps ] }
     }
     compressDigiMCs : @local::DigiCompression.Primary
   }
@@ -38,18 +42,18 @@ Primary: {
       module_type : StrawDigiMCFilter
       StrawDigiMCCollection : "makeSD"
     }
+# shower filter for calorimeter selection
+    CaloFilter : {
+      module_type : CaloShowerSimFilter
+    }
   }
   analyzers: {
     genCountLogger: { module_type: GenEventCountReader makeHistograms: false }
+    digiCompressionCheck : @local::DigiCompression.Check
   }
-  TriggerPath : [ generate, genCounter, g4run, g4status,
-    @sequence::CommonMC.DigiSim,
-    @sequence::TrackerMC.DigiSim,
-    DigiFilter,
-    @sequence::CaloDigiMC.DigiSim,
-    @sequence::CrvDAQPackage.CrvResponseSequence,
-    compressDigiMCs ]
-  EndPath : [ genCountLogger, Output ]
+  GenAndG4 :  [ generate, genCounter, g4run, g4status ]
+
+ EndPath : [ genCountLogger, digiCompressionCheck, Output ]
   Output : {
      module_type : RootOutput
      SelectEvents : [ TriggerPath ]
@@ -58,5 +62,13 @@ Primary: {
      outputCommands : @local::DigiCompression.OutputCommands
   }
 }
+# must define this outside the brackets due to internal dependence
+Primary.TriggerPath : [ @sequence::Primary.GenAndG4,
+  @sequence::CommonMC.DigiSim,
+  @sequence::TrackerMC.DigiSim,
+  DigiFilter,
+  @sequence::CaloDigiMC.DigiSim,
+  @sequence::CrvDAQPackage.CrvResponseSequence,
+  compressDigiMCs ]
 
 END_PROLOG

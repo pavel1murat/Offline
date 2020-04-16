@@ -5,7 +5,7 @@
 #include "TH2.h"
 
 #include "art/Framework/Services/Registry/ServiceHandle.h"
-#include "art/Framework/Services/Optional/TFileService.h"
+#include "art_root_io/TFileService.h"
 #include "art/Framework/Principal/Handle.h"
 #include "art/Utilities/ToolMacros.h"
 #include "art/Framework/Principal/Event.h"
@@ -15,8 +15,6 @@
 #include "CalPatRec/inc/CalHelixFinder_types.hh"
 #include "Mu2eUtilities/inc/ModuleHistToolBase.hh"
 
-#include "MCDataProducts/inc/StrawHitMCTruth.hh"
-#include "MCDataProducts/inc/StrawHitMCTruthCollection.hh"
 #include "MCDataProducts/inc/StepPointMCCollection.hh"
 
 #include "Mu2eUtilities/inc/SimParticleTimeOffset.hh"
@@ -35,7 +33,7 @@ namespace mu2e {
     SimParticleTimeOffset*     _timeOffsets;
     
   public:
-    
+
     CalHelixFinderDiag(const fhicl::ParameterSet& PSet);
     ~CalHelixFinderDiag();
     
@@ -49,12 +47,10 @@ namespace mu2e {
 //
 //-----------------------------------------------------------------------------
 CalHelixFinderDiag::CalHelixFinderDiag(const fhicl::ParameterSet& PSet) {
-  printf(" CalHelixFinderDiag::CalHelixFinderDiag : HOORAY! \n");
   _first_call   = 1;
   _event_number = -1;
   _timeOffsets  = NULL;
 }
-
 
 CalHelixFinderDiag::~CalHelixFinderDiag() {
 }

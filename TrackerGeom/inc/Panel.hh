@@ -31,18 +31,16 @@
 
 namespace mu2e {
 
-  class Tracker;
-
   class Panel{
 
-    friend class Plane;
-    friend class TTracker;
-    friend class TTrackerMaker;
+    friend class TrackerMaker;
+    friend class AlignedTrackerMaker;
+    friend class Tracker; // needed for deep copy
 
   public:
 
-    Panel():_id(PanelId()){}
-    Panel( const PanelId& id ):_id(id){}
+    Panel():_id(PanelId()),_straws2_p(){}
+    Panel( const PanelId& id ):_id(id),_straws2_p(){}
 
     // Accept the compiler generated destructor, copy constructor and assignment operators
 
@@ -76,7 +74,7 @@ namespace mu2e {
         return *(_straws2_p.at((strid2.asUint16() & StrawId::_strawmsk)));
       } else {
         std::ostringstream msg;
-        msg << __func__ << " Inconsistent straw/panel request " 
+        msg << __func__ << " Inconsistent straw/panel request "
             << strid2 << " / " << _id << std::endl;
         throw cet::exception("RANGE") << msg.str();
       }
@@ -85,11 +83,13 @@ namespace mu2e {
     // Mid-point position of the average (over the layers) of the primary
     // straws, and (collective) straw direction.
     // (The primary straw of each layer is the straw used to establish position.
-    //  In the TTracker the primary straw is the innermost straw.)
+    //  In the Tracker the primary straw is the innermost straw.)
     // *** In a multi-layer geometry, the straw0MidPoint ***
     // ***        need not lie on any actaul straw       ***
     CLHEP::Hep3Vector straw0MidPoint()  const { return _straw0MidPoint;  }
     CLHEP::Hep3Vector straw0Direction() const { return _straw0Direction; }
+
+    CLHEP::Hep3Vector const& origin() const { return _origin; }
 
     // Formatted string embedding the id of the panel.
     std::string name( std::string const& base ) const;
@@ -116,55 +116,12 @@ namespace mu2e {
     double             getEBKeyPhiExtraRotation() const { return _EBKeyPhiExtraRotation; }
 
     // On readback from persistency, recursively recompute mutable members.
-    void fillPointers ( const Tracker& tracker ) const;
+    void fillPointers ( const Tracker* tracker ) const;
 
-#ifndef __CINT__
-    /*
-    template <class F>
-    void for_each_layer( F f) const{
-      std::for_each ( _layers.begin(),
-                      _layers.end(),
-                      f);
-    }
-
-    template <class F>
-    void for_each_straw( F f) const {
-      for_each_layer( boost::bind( Layer::for_each<F>, _1, f));
-    }
-    */
-
-    // Loop over all straws and call F.
-    // F can be a class with an operator() or a free function.
-    template <class F>
-    inline void forAllStraws ( F& f) const{
-      for ( const auto& sp : _straws2_p ) {
-        f(*sp);
-      }
-    }
-
-    // template <class F>
-    // inline void forAllLayers ( F& f) const{
-    //   for ( std::vector<Layer>::const_iterator i=_layers.begin(), e=_layers.end();
-    //         i !=e; ++i){
-    //     f(*i);
-    //   }
-    // }
-
-#endif
 
   protected:
 
     PanelId _id;
-
-    // std::vector<Layer> _layers;
-
-    // const Layer& getLayer ( int n ) const {
-    //   return _layers.at(n);
-    // }
-
-    // const Layer& getLayer ( const LayerId& layid) const {
-    //   return _layers.at(layid.getLayer());
-    // }
 
     std::array<Straw const*, StrawId::_nstraws> _straws2_p;
 
@@ -172,9 +129,6 @@ namespace mu2e {
     std::vector<CLHEP::Hep3Vector> corners;
 
     // Properties of the enclosing logical volume (box).
-
-    // Half lengths of the logical box.
-    // std::vector<double> _boxHalfLengths;
 
     std::vector<CLHEP::Hep3Vector> _basePosition;
     CLHEP::Hep3Vector _baseDelta;
@@ -194,6 +148,9 @@ namespace mu2e {
     //         declarations can go away.
     mutable CLHEP::Hep3Vector _straw0MidPoint;
     mutable CLHEP::Hep3Vector _straw0Direction;
+
+    // panel origin
+    mutable CLHEP::Hep3Vector _origin;
 
     // electronic boards; they are placed wrt to the panel, but in a
     // different mother volume one per panel

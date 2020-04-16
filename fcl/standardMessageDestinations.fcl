@@ -117,6 +117,10 @@ mf_coutInfo:
      limit       : 1    # start exponential backoff right away
      timespan    : 300  # report every 5min too, as asymmtotic behavior
    }
+   fileAction:
+   {
+     limit : -1
+   } 
    default:             
    {
      limit : 100
@@ -135,6 +139,7 @@ mf_coutInfo:
    GEOM_MINRANGECUT : { limit : 0 }
    GEOM_PARTICLECUT : { limit : 0 }
    Configuration : { limit : 0 }
+   HITS : { limit : 0 }
  } # end categories
 } # end mf_coutInfo
 mf_coutInfoStats : 

@@ -14,7 +14,6 @@
 #include "GlobalConstantsService/inc/GlobalConstantsHandle.hh"
 #include "GlobalConstantsService/inc/ParticleDataTable.hh"
 #include "MCDataProducts/inc/GenParticleCollection.hh"
-#include "MCDataProducts/inc/PhysicalVolumeInfoCollection.hh"
 #include "MCDataProducts/inc/PhysicalVolumeInfoMultiCollection.hh"
 #include "MCDataProducts/inc/SimParticleCollection.hh"
 #include "MCDataProducts/inc/StepPointMCCollection.hh"
@@ -26,7 +25,7 @@
 #include "art/Framework/Principal/Run.h"
 #include "art/Framework/Principal/SubRun.h"
 #include "art/Framework/Core/ModuleMacros.h"
-#include "art/Framework/Services/Optional/TFileService.h"
+#include "art_root_io/TFileService.h"
 #include "art/Framework/Principal/Handle.h"
 #include "cetlib_except/exception.h"
 #include "fhiclcpp/ParameterSet.h"
@@ -229,25 +228,6 @@ namespace mu2e {
   }
 
   void Mu2eG4StudyReadBack::beginRun(art::Run const& run){
-
-    // Get pointers to the physical volumes we are interested; fixme not used for now
-    art::Handle<PhysicalVolumeInfoCollection> physVolumes;
-    run.getByLabel(_g4ModuleLabel, physVolumes);
-    if( physVolumes.isValid() ) {
-
-      // fixme get it from the config file
-
-      // register all volumes
-      for ( size_t i=0; i<physVolumes->size(); ++i ) {
-        // if( (*physVolumes)[i].name() == "BoxInTheWorld" ) {
-        vid_stop[i] = (*physVolumes)[i].copyNo();
-        cout << "Mu2eG4StudyReadBack: register volume " << i << " = "
-             << (*physVolumes)[i].name() << " " << (*physVolumes)[i].copyNo() << endl;
-        //}
-      }
-
-    }
-
   }
 
   void Mu2eG4StudyReadBack::beginSubRun(art::SubRun const& sr) {
