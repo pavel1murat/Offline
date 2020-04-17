@@ -1,3 +1,4 @@
+# -*- mode: tcl -*-
 // Andrei Gaponenko, 2015
 
 #include "fcl/minimalMessageService.fcl"
@@ -12,17 +13,14 @@ source : {
    module_type : RootInput
 }
 
-services : {
+services : { @table::Services.Sim
+   TFileService    : { 
+       fileName    : "nts.owner.TS.version.sequencer.root" 
+   }
 
-   message               : @local::default_message
-   TFileService          : { fileName : "nts.owner.TS.version.sequencer.root" }
-   RandomNumberGenerator : {defaultEngineKind: "MixMaxRng" }
-
-   GeometryService        : { inputFile      : "JobConfig/common/geom_baseline.txt" }
-   ConditionsService      : { conditionsfile : "Mu2eG4/test/conditions_01.txt"      }
-   GlobalConstantsService : { inputFile      : "Mu2eG4/test/globalConstants_01.txt" }
-   G4Helper               : { }
-   SeedService            : @local::automaticSeeds
+   GeometryService : { @table::Services.Sim.GeometryService 
+       inputFile   : "JobConfig/common/geom_baseline.txt" 
+   }
 }
 
 physics : {
@@ -180,5 +178,5 @@ outputs: {
 physics.producers.g4run.physics.minRangeCut : 1. // mm
 
 // Initialze seeding of random engines: do not put these lines in base .fcl files for grid jobs.
-services.SeedService.baseSeed         :  0
+services.SeedService.baseSeed         :   8
 services.SeedService.maxUniqueEngines :  20
