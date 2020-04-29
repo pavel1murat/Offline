@@ -1,3 +1,4 @@
+// -*- mode: tcl -*-
 // Andrei Gaponenko, 2015
 #include "fcl/minimalMessageService.fcl"
 #include "fcl/standardProducers.fcl"
@@ -8,11 +9,19 @@ process_name : DS
 
 source : { module_type : RootInput }
 
-services : { @table::Services.Sim }
+services : { @table::Services.Sim
+    TFileService    : { fileName: "nts.owner.DS.version.sequencer.root" }
 
-services.GeometryService.inputFile      : "JobConfig/common/geom_common_current.txt" 
-services.SeedService.baseSeed           :  8
-services.SeedService.maxUniqueEngines   :  20
+    GeometryService : { @table::Services.Sim.GeometryService 
+	inputFile: "JobConfig/common/geom_baseline.txt" 
+    }
+
+    SeedService     : { @table::Services.Sim.SeedService
+	// Initialze seeding of random engines: do not put these lines in base .fcl files for grid jobs.
+	baseSeed         :  8
+	maxUniqueEngines :  20
+    }
+}
 
 physics : {
 
@@ -271,9 +280,9 @@ outputs: {
    }
 }
 
+physics.producers.g4run.physics.minRangeCut : 0.010 // mm
+
 // Limit the amount of "Begin processing the ... record" messages
 services.message.destinations.log.categories.ArtReport.reportEvery : 1
 services.message.destinations.log.categories.ArtReport.limit : 1
 services.message.destinations.log.categories.ArtReport.timespan : 300
-
-physics.producers.g4run.physics.minRangeCut : 0.010 // mm
