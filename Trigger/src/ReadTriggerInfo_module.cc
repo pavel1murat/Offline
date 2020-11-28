@@ -83,14 +83,14 @@ namespace mu2e {
       kNTrigInfo     = 40,
       kNTrackTrig    = 20,
       kNTrackTrigVar = 30,
-      kNHelixTrig    = 10,
-      kNHelixTrigVar = 100,
+      kNHelixTrig    = 40,
+      kNHelixTrigVar = 130,
       kNCaloCalib    = 5,
-      kNCaloCalibVar = 5,
+      kNCaloCalibVar = 30,
       kNCaloOnly     = 5,
-      kNCaloOnlyVar  = 5,
-      kNOcc          = 40,
-      kNOccVar       = 10
+      kNCaloOnlyVar  = 30,
+      kNOcc          = 100,
+      kNOccVar       = 100
     };
 
     struct MCInfo {
