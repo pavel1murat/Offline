@@ -175,50 +175,49 @@ mu2e.physics.g4s4CommonBase: {
     end_paths    : [ out, gcl ]
 }
 
-crvPathCommon     : [ g4run, g4consistent, crvFilter, compressPVCRV ]
+# crvPathCommon     : [ g4run, g4consistent, crvFilter, compressPVCRV ]
 
-detPathCommon     : [ g4run, g4consistent, CaloShowerStepFromStepPt, 
-		      detectorFilter, CaloShowerCrystalSteps, CaloShowerROSteps, 
-		      compressPVDetector 
-		     ]
-g4StatusPathCommon:  [ g4run, "!g4status", compressPVFull ]
+# detPathCommon     : [ g4run, g4consistent, CaloShowerStepFromStepPt, 
+# 		      detectorFilter, CaloShowerCrystalSteps, CaloShowerROSteps, 
+#		      compressPVDetector 
+#		     ]
+# g4StatusPathCommon:  [ g4run, "!g4status", compressPVFull ]
 #----------------------------------------------------------------
-mu2e.physics.g4s4Flash                 : @local::mu2e.physics.g4s4CommonBase
-mu2e.physics.g4s4Flash.producers.g4run : @local::mu2e.physics.producers.g4run.flash
-mu2e.physics.g4s4Flash.crvPath         : [ @sequence::crvPathCommon ]
-mu2e.physics.g4s4Flash.detPath         : [ @sequence::detPathCommon ]
-mu2e.physics.g4s4Flash.g4StatusPath    : [ @sequence::g4StatusPathCommon ]
+# mu2e.physics.g4s4Flash                 : { @table::mu2e.physics.g4s4CommonBase        }
+# mu2e.physics.g4s4Flash.producers.g4run : } @table::mu2e.physics.producers.g4run.flash }
+# mu2e.physics.g4s4Flash.crvPath         : [ @sequence::crvPathCommon ]
+# mu2e.physics.g4s4Flash.detPath         : [ @sequence::detPathCommon ]
+# mu2e.physics.g4s4Flash.g4StatusPath    : [ @sequence::g4StatusPathCommon ]
 
 #----------------------------------------------------------------
-mu2e.physics.g4s4Muons                : @local::mu2e.physics.g4s4CommonBase
-mu2e.physics.g4s4Muons.producers.g4run: @local::mu2e.physics.producers.g4run.muons
+# mu2e.physics.g4s4Muons                : @local::mu2e.physics.g4s4CommonBase
+# mu2e.physics.g4s4Muons.producers.g4run: @local::mu2e.physics.producers.g4run.muons
 
-mu2e.physics.g4s4Muons.producers.genCounter: { module_type: GenEventCounter }
+# mu2e.physics.g4s4Muons.producers.genCounter: { module_type: GenEventCounter }
 
-mu2e.physics.g4s4Muons.crvPath:       [ generate, genCounter,  @sequence::crvPathCommon ]
-mu2e.physics.g4s4Muons.g4StatusPath:  [ generate, genCounter, @sequence::g4StatusPathCommon ]
+# mu2e.physics.g4s4Muons.crvPath:       [ generate, genCounter,  @sequence::crvPathCommon ]
+# mu2e.physics.g4s4Muons.g4StatusPath:  [ generate, genCounter, @sequence::g4StatusPathCommon ]
 
-mu2e.physics.g4s4Muons.detPath:       [ generate, genCounter,  @sequence::detPathCommon ]
+# mu2e.physics.g4s4Muons.detPath:       [ generate, genCounter,  @sequence::detPathCommon ]
 
 Primary: {
-    producers : {
-	g4run      : @local::mu2e.physics.producers.g4run.muons
-	genCounter : { module_type: GenEventCounter }
+#    producers : {
+#	genCounter : { module_type: GenEventCounter }
 
-	@table::EventGenerator.producers
-	@table::CommonMC.producers
-	@table::TrackerMC.producers
-	@table::CaloDigiMC.producers
-	@table::CrvDAQPackage.producers
+# 	@table::EventGenerator.producers
+#	@table::CommonMC.producers
+#	@table::TrackerMC.producers
+#	@table::CaloDigiMC.producers
+#	@table::CrvDAQPackage.producers
 
 	# dedicated digi maker for filter, 2 stages now
 
-	makeSGS         : { module_type : MakeStrawGasSteps
-	    KeepDeltasModule : "g4run"                         # don'e compress deltas on primary particles
-	}
-	makeSD          : { @table::makeSD }
-	compressDigiMCs : @local::DigiCompression.Primary
-    }
+#	makeSGS         : { module_type : MakeStrawGasSteps    # this is the default configuration
+#	    KeepDeltasModule : "g4run"                         # don'e compress deltas on primary particles
+#	}
+#	makeSD          : { @table::makeSD }
+#	compressDigiMCs : { @table::DigiCompression.Primary }
+#    }
 
     filters : {
 	g4status: { @table::g4status } 
@@ -235,10 +234,6 @@ Primary: {
 	digiCompressionCheck : { @table::DigiCompression.Check }
     }
 
-    GenAndG4 : [ generate, genCounter, g4run, g4status ]
-    
-    EndPath  : [ genCountLogger, digiCompressionCheck, Output ]
-
     Output   : {
 	module_type    : RootOutput
 	SelectEvents   : [ @sequence::TRIGGER_PATHS ]
@@ -246,7 +241,11 @@ Primary: {
 	# drop StepPoints from calorimeter
 	outputCommands : @local::DigiCompression.OutputCommands
     }
+
+    EndPath  : [ genCountLogger, digiCompressionCheck, Output ]
 }
+
+Primary.GenAndG4    : [ generate, genCounter, g4run, g4status ]
 
 # must define this outside the brackets due to internal dependence
 Primary.TriggerPath : [ @sequence::Primary.GenAndG4,
@@ -360,8 +359,8 @@ Mixing : {
 
 Mixing : { @table::Mixing
     producers : {
-
-	@table::Primary.producers
+	g4run      : { @table::mu2e.physics.producers.g4run.muons }
+#	@table::Primary.producers
 #------------------------------------------------------------------------------
 # proton bunch intensity - realistic one
 # assume SDF = 0.6 -> sigma = 
@@ -375,18 +374,25 @@ Mixing : { @table::Mixing
 	    cutMax       : 12.0e7     # 11.7e7     # cut the tail far enough
 	}
 	                                                # tracker digis for primary selection
-	makeSGSPrimary   : { @table::makeSGS }
-	                                                # in mixing mode, still filter on primary
-	makeSDPrimary    : { @table::makeSD
-	    StrawGasStepModule : makeSGSPrimary
-	    TimeOffsets        : [ @sequence::CommonMC.TimeMapsPrimary ]
-	}
-
 	# digi compression - this seems to inpude primary
 	compressDigiMCs  : { @table::DigiCompression.Mixing
 	    simParticleTags    : [ "g4run", @sequence::Mixing.TrkCalMixSequence ] # , @sequence::Mixing.CRVMixSequence ]
 	    caloShowerStepTags : [ "CaloShowerStepFromStepPt:calorimeter" , @sequence::Mixing.caloMixerTags     ]
 	}
+
+	CaloShowerStepFromStepPtPrimary: { @table::CaloShowerStepFromStepPt }
+
+	CaloShowerStepROFromShowerStepPrimary: { @table::CaloShowerStepROFromShowerStep
+	    caloCrystalShowerInputs : [ "CaloShowerStepFromStepPtPrimary:calorimeter" ]
+	    TimeOffsets             : {
+		inputs : [ @sequence::CommonMC.TimeMapsPrimary ]
+	    }
+	}
+
+	# CaloDigiFromShowerPrimary: { @table::CaloDigiFromShower
+	#     caloShowerModuleLabel : CaloShowerStepROFromShowerStepPrimary
+	# }
+
     }
 
     filters : {
@@ -413,6 +419,14 @@ Mixing : { @table::Mixing
 	# digi filtering for Primary selection.
 	StrawDigiMCFilter   : { @table::StrawDigiMCFilter 
 	    StrawDigiMCCollection : "makeSDPrimary"
+	}
+
+	CaloShowerSimFilter : { module_type :CaloShowerSimFilter
+	    particleTypes     : [ 22, 11, -11, 13, -13, 2212, -2212  ] # save photons, electrons, muons, and protons
+	    MinParticleEnergy       : 40.0 # MeV
+	    MinTotalEnergy          : 100000.0 # disable, is an OR with MinParticleEnergy
+	    CaloShowerSimCollection : "CaloShowerStepROFromShowerStepPrimary"
+	    # debugLevel              : 1
 	}
     }
 
@@ -444,6 +458,12 @@ Mixing.CreatePrimarySequence : [ @sequence::Primary.GenAndG4        ,
 				 makeSGSPrimary, makeSDPrimary      , 
 				 StrawDigiMCFilter                           # for sig+mbs, filter on makeSDPrimary
 				]
+Mixing.CreatePrimarySequence_calo : [ @sequence::Primary.GenAndG4,
+				      @sequence::CommonMC.PrimaryDigiSim,
+				      makeSGSPrimary, makeSDPrimary, 
+				      CaloShowerStepFromStepPtPrimary, CaloShowerStepROFromShowerStepPrimary,
+				      CaloShowerSimFilter
+				     ]
 
 Mixing.pbi_mix             : [ protonBunchIntensity               , 
 			       EWMProducer                        , 
@@ -508,6 +528,10 @@ Mixing.signal_minbias_nocrv : [ @sequence::Mixing.CreatePrimarySequence,
 				@sequence::Mixing.pbi_mix_digi_nocrv  ,
 				compressDigiMCs 
 			       ]
+Mixing.signal_minbias_nocrv_calo : [ @sequence::Mixing.CreatePrimarySequence_calo,
+				     @sequence::Mixing.pbi_mix_digi_nocrv  ,
+				     compressDigiMCs 
+				    ]
 
 Mixing.minbias_nocrv        : [ @sequence::Mixing.pbi_mix_digi_nocrv  ,
 				compressDigiMCs 

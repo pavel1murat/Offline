@@ -67,10 +67,18 @@ su2020 : {
 	@table::CaloDigiMC.producers      # defined in CaloDigiMC
 	@table::CaloDigiMC.producersMC    # defined in CaloDigiMC
 	@table::CaloCluster.producersMC   # defined in CaloCluster
+	@table::CrvDAQPackage.producers   # 
 	@table::TrackerMC.producers       # defined in TrackerMC
 
 	compressDigiMCs : { @table::DigiCompression.Primary       # defined in Filters/fcl/
 	    crvDigiMCTag         : ""
+	}
+                                                                  # need these tags for mixing
+	makeSGSPrimary   : { @table::makeSGS }
+	                                                          # in mixing mode, still filter on primary
+	makeSDPrimary    : { @table::makeSD
+	    StrawGasStepModule : makeSGSPrimary
+	    TimeOffsets        : [ @sequence::CommonMC.TimeMapsPrimary ]
 	}
 
 	generate  : { @table::EventGenerator.producers.egun }      # to avoid unnecessary diagnostics
@@ -78,7 +86,7 @@ su2020 : {
 
 	# dummy protonBunchIntensity objects for primary-only datasets
 	protonBunchIntensity : { module_type: ProtonBunchIntensityFlat
-	    mean: 0.0 # No PBI possible for pure signal! 
+	    mean      : 0.0 # No PBI possible for pure signal! 
 	    halfWidth : 1.0
 	}
 #------------------------------------------------------------------------------
@@ -176,17 +184,6 @@ su2020 : {
 	@table::Trigger.analyzers
         genCountLogger            : { module_type: GenEventCountReader } # defalt: 1 StepPointMC, 10 MeV
     }
-#------------------------------------------------------------------------------
-# outputs: by default, keep everything
-#------------------------------------------------------------------------------
-    outputs: {
-	defaultOutput : { module_type : RootOutput
-	    SelectEvents  : [ @sequence::TRIGGER_PATHS ]
-	    outputCommands: [ "keep *_*_*_*" 
-			      # (example)		      , "drop uintmu2e::PhysicalVolumeInfomvstd::pairs_g4run_*_*"
-			     ]
-	}
-    }
 }
 
 #------------------------------------------------------------------------------
@@ -207,6 +204,7 @@ su2020.gen_sim_output       : [ "drop    *_*_*_*",
 su2020.gen_sim_digi_output  : [ "drop    *_*_*_*",
 				"keep    *_compressDigiMCs_*_*",
 				"keep    mu2e::GenEventCount_*_*_*",
+				"keep mu2e::GenParticles_generate_photon_*",
 				"keep    mu2e::StatusG4_g4run_*_*",
 				"keep    mu2e::EventWeight_*_*_*",
 				"keep    mu2e::EventWindowMarker_EWMProducer_*_*",
@@ -220,14 +218,28 @@ su2020.gen_sim_digi_output  : [ "drop    *_*_*_*",
 #------------------------------------------------------------------------------
 # 2. output format for digi files after mixing
 #------------------------------------------------------------------------------
-su2020.mixing_output : [ "drop *_*_*_*"                         ,
-			 "keep *_compressDigiMCs_*_*"           ,
-			 "keep mu2e::EventWindowMarker_*_*_*"   ,
-			 "keep mu2e::ProtonBunchIntensity_*_*_*",
-			 "keep mu2e::StrawDigis_*_*_*"          ,
-			 "keep mu2e::CaloDigis_*_*_*"           ,
-			 "keep mu2e::CrvDigis_*_*_*"
+su2020.mixing_output : [ "drop *_*_*_*"                               ,
+			 "keep *_compressDigiMCs_*_*"                 ,
+			 "keep mu2e::EventWindowMarker_*_*_*"         ,
+			 "keep mu2e::ProtonBunchIntensity_*_*_*"      ,
+			 "keep mu2e::StrawDigis_*_*_*"                ,
+			 "keep mu2e::CaloDigis_*_*_*"                 ,
+			 "keep mu2e::CrvDigis_*_*_*"                  ,
+			 "keep art::TriggerResults_TriggerResults_*_*"
 			]
+
+su2020.outputs: {
+    defaultOutput : { module_type : RootOutput
+	SelectEvents  : [ @sequence::TRIGGER_PATHS ]
+	outputCommands: [ "keep *_*_*_*" 
+			  # (example)		      , "drop uintmu2e::PhysicalVolumeInfomvstd::pairs_g4run_*_*"
+			 ]
+    }
+    
+    FullOutput : { @table::Mixing.Output  outputCommands : [ "keep *_*_*_*"                  ] }
+    DetOutput  : { @table::Mixing.Output  outputCommands : [ @sequence::su2020.mixing_output ] }
+}
+
 #------------------------------------------------------------------------------
 # module sequences - by functionality
 #------------------------------------------------------------------------------
@@ -326,13 +338,18 @@ su2020.trk_reco_sep  : [ @sequence::Reconstruction.DeSequence,
 			 @sequence::Reconstruction.UmuSequence
 		       ]
 
-# MC compression at the end of reco
-su2020.reco_compression : [ protonBunchIntensity, # for signal-only
-			    FindMCPrimary,        # find the primary particle
+# MC compression at the end of reco, assume the pulse punch intensity to be present
+su2020.reco_compression : [ FindMCPrimary,        # find the primary particle
 			    SelectRecoMC,         # identify the MC information we want to keep
 			    compressRecoMCs       # compress
 			  ]
 
+# trigger paths considered, include into digi datasets
+su2020.triggers         : [
+			   tprSeedDeM_trigger    , cprSeedDeM_trigger    , tprSeedDeP_trigger    , cprSeedDeP_trigger    , 
+			   cprLowPSeedDeM_trigger, cprLowPSeedDeP_trigger, tprLowPSeedDeM_trigger, tprLowPSeedDeP_trigger, 
+			   tprHelixIPADeM_trigger
+			  ]
 #------------------------------------------------------------------------------
 # SU2020 paths
 #------------------------------------------------------------------------------
