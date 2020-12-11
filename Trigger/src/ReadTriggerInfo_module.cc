@@ -36,6 +36,7 @@
 #include "RecoDataProducts/inc/CaloTrigSeed.hh"
 #include "RecoDataProducts/inc/HelixSeed.hh"
 #include "RecoDataProducts/inc/KalSeed.hh"
+#include "RecoDataProducts/inc/TrkQual.hh"
 #include "RecoDataProducts/inc/TriggerInfo.hh"
 #include "RecoDataProducts/inc/ComboHit.hh"
 #include "RecoDataProducts/inc/StrawDigi.hh"
@@ -69,7 +70,6 @@
 #include <string>
 // #include <map>
 #include <vector>
-
 
 
 namespace mu2e {
@@ -114,7 +114,7 @@ namespace mu2e {
       int           exclusive_counts;
       std::string   label;
       
-      trigInfo_ ():counts(0), exclusive_counts(0){}
+      trigInfo_ ():counts(0), exclusive_counts(0), label(""){}
     };
 
     struct  summaryInfoHist_  {
@@ -224,6 +224,11 @@ namespace mu2e {
     void     findCorrelatedEvents (std::vector<string>& VecLabels, double &NCorrelated);
     void     evalTriggerRate      ();
 
+    void     fillTrackEfficiencyHist(const mu2e::KalSeedCollection*     KsCol, 
+				     const mu2e::TrkQualCollection*     TrkQualCol, 
+				     const art::TriggerResults*         TrigResults,
+				     const mu2e::StepPointMCCollection* Steps);
+    bool     goodTrkTanDip(const mu2e::KalSeed*Ks);
   private:
 
     int                       _diagLevel;
@@ -238,9 +243,19 @@ namespace mu2e {
     art::InputTag             _chTag;    
     art::InputTag             _cdTag;
     art::InputTag             _evtWeightTag;
+    art::InputTag             _hsCprTag;
+    art::InputTag             _hsTprTag;
+    art::InputTag             _ksTag;
+    art::InputTag             _trkQualTag;
+    art::InputTag             _vdTag;
+   
     double                    _duty_cycle;
     string                    _processName;
-
+    std::vector<size_t>       _effBits;
+    float                     _trkMinTanDip;
+    float                     _trkMaxTanDip;
+    float                     _trkMaxD0;    
+    float                     _trkMinMVA;   
     float                     _nProcess;
     double                    _bz0;
 
@@ -268,6 +283,10 @@ namespace mu2e {
     const mu2e::StrawDigiMCCollection* _mcdigis;
     const mu2e::ComboHitCollection*    _chcol;
     const art::Event*                  _event;
+    const mu2e::HelixSeedCollection*   _hsCprCol;
+    const mu2e::HelixSeedCollection*   _hsTprCol;
+
+    float  _minPOT, _maxPOT;
   };
 
 
@@ -284,9 +303,20 @@ namespace mu2e {
     _chTag         (pset.get<art::InputTag>("comboHitCollection"   , "TTmakeSH")),
     _cdTag         (pset.get<art::InputTag>("caloDigiCollection"   , "CaloDigiFromShower")),
     _evtWeightTag  (pset.get<art::InputTag>("protonBunchIntensity" , "protonBunchIntensity")),
+    _hsCprTag      (pset.get<art::InputTag>("cprHelixSeedCollection", "CalHelixFinderDe:Positive")), // , "KFFDeMHPar")),
+    _hsTprTag      (pset.get<art::InputTag>("tprHelixSeedCollection", "HelixFinderDe:Positive")), // , "KFFDeMHPar")),
+    _ksTag         (pset.get<art::InputTag>("kalSeedCollection"  , "KFFDeMHPar")),
+    _trkQualTag    (pset.get<art::InputTag>("trackQualCollection", "TrkQualDeMHPar")),
+    _vdTag         (pset.get<art::InputTag>("vdStepPoints","NOTNOW")), // , "compressDigiMCs:virtualdetector")),
     _duty_cycle    (pset.get<float> ("dutyCycle", 1.)),
     _processName   (pset.get<string> ("processName", "globalTrigger")),
-    _nProcess      (pset.get<float> ("nEventsProcessed", 1.))
+    _effBits       (pset.get<std::vector<size_t>>("effBits", std::vector<size_t>{2,8})),
+    _trkMinTanDip  (pset.get<float> ("trkMinTanDip", 0.5)),
+    _trkMaxTanDip  (pset.get<float> ("trkMaxTanDip", 1.)),
+    _trkMaxD0      (pset.get<float> ("trkMaxD0", 100.)),
+    _trkMinMVA     (pset.get<float> ("trkMinMVA", 0.8)),
+    _nProcess      (pset.get<float> ("nEventsProcessed", 1.)),
+    _minPOT(1e6), _maxPOT(4e8)
   {
     _trigAll.      resize(_nMaxTrig);	     
     _trigFinal.    resize(_nMaxTrig);    
@@ -295,6 +325,7 @@ namespace mu2e {
     _trigTrack.    resize(_nMaxTrig);    
     _trigHelix.    resize(_nMaxTrig);    
     _trigEvtPS.    resize(_nMaxTrig);    
+
   }
   
   
@@ -329,6 +360,16 @@ namespace mu2e {
     Hist._hTrigInfo[11]  = trigInfoDir.make<TH1F>("hTrigInfo_unique"    , "Events found only by each Trig path"        , (_nMaxTrig+2), -0.5, (_nMaxTrig+1.5));       
 
     Hist._hTrigInfo[15]  = trigInfoDir.make<TH1F>("hTrigInfo_paths"     , "Rejection of all the Trigger paths"         , (_nMaxTrig+2), -0.5, (_nMaxTrig+1.5));       
+    for (size_t i=0; i< _trigPaths.size(); ++i){
+      Hist._hTrigInfo[15]->GetXaxis()->SetBinLabel(i+1, _trigPaths[i].c_str());
+    }
+    
+    Hist._hTrigInfo[16]  = trigInfoDir.make<TH1F>("hTrksVsPOT","nOfflineTracks vs inst lum; p/pulse; nOfflieTracks",  1000, _minPOT, _maxPOT);
+    Hist._hTrigInfo[17]  = trigInfoDir.make<TH1F>("hTrksTrigVsPOT","nOfflineTracks triggered vs inst lum; p/pulse; nOfflieTracks triggered",  1000, _minPOT, _maxPOT);
+    Hist._hTrigInfo[18]  = trigInfoDir.make<TH1F>("hNormVsPOT","events vs inst lum; p/pulse; Entries",  1000, _minPOT, _maxPOT);
+    Hist._hTrigInfo[19]  = trigInfoDir.make<TH1F>("hNPOT","nPOT; p/pulse; Entries",  1000, _minPOT, _maxPOT);
+    Hist._hTrigInfo[20]  = trigInfoDir.make<TH1F>("hCprNorm","cpr Good Offline tracks;p/pulse; Entries",  1000, _minPOT, _maxPOT);
+    Hist._hTrigInfo[21]  = trigInfoDir.make<TH1F>("hTprNorm","tpr Good Offline tracks;p/pulse; Entries",  1000, _minPOT, _maxPOT);
 
 
     Hist._h2DTrigInfo[0] = trigInfoDir.make<TH2F>("h2DTrigInfo_map_all" , "Trigger correlation map from all filters"   , (_nMaxTrig+2), -0.5, (_nMaxTrig+1.5), (_nMaxTrig+2), -0.5, (_nMaxTrig+1.5));       
@@ -511,34 +552,34 @@ namespace mu2e {
     
     for (int i=0; i<_nTrackTrig; ++i){
       art::TFileDirectory occInfoDir = Tfs->mkdir(Form("occInfoTrk_%i", i));
-      Hist._hOccInfo  [i][0]  = occInfoDir.make<TH1F>(Form("hInstLum_%i"  ,i),"distrbution of instantaneous lum; p/#mu-bunch"  ,  1000, 1e6, 4e8);
+      Hist._hOccInfo  [i][0]  = occInfoDir.make<TH1F>(Form("hInstLum_%i"  ,i),"distrbution of instantaneous lum; p/#mu-bunch"  ,  1000, _minPOT, _maxPOT);
       
-      Hist._h2DOccInfo[i][0]  = occInfoDir.make<TH2F>(Form("hNSDVsLum_%i" ,i),"inst lum vs nStrawDigi; p/#mu-bunch; nStrawDigi",  1000, 1e6, 4e8, 5000, 0., 20000.);
-      Hist._h2DOccInfo[i][1]  = occInfoDir.make<TH2F>(Form("hNCDVsLum_%i" ,i),"inst lum vs nCaloDigi; p/#mu-bunch; nCaloDigi"  ,  1000, 1e6, 4e8, 5000, 0., 20000.);
+      Hist._h2DOccInfo[i][0]  = occInfoDir.make<TH2F>(Form("hNSDVsLum_%i" ,i),"inst lum vs nStrawDigi; p/#mu-bunch; nStrawDigi",  1000, _minPOT, _maxPOT, 5000, 0., 20000.);
+      Hist._h2DOccInfo[i][1]  = occInfoDir.make<TH2F>(Form("hNCDVsLum_%i" ,i),"inst lum vs nCaloDigi; p/#mu-bunch; nCaloDigi"  ,  1000, _minPOT, _maxPOT, 5000, 0., 20000.);
     }
     
     for (int i=_nTrackTrig; i<_nTrackTrig*2; ++i){
       art::TFileDirectory occInfoDir = Tfs->mkdir(Form("occInfoHel_%i", i));
-      Hist._hOccInfo  [i][0]  = occInfoDir.make<TH1F>(Form("hInstLum_%i"  ,i),"distrbution of instantaneous lum; p/#mu-bunch"  ,  1000, 1e6, 4e8);
+      Hist._hOccInfo  [i][0]  = occInfoDir.make<TH1F>(Form("hInstLum_%i"  ,i),"distrbution of instantaneous lum; p/#mu-bunch"  ,  1000, _minPOT, _maxPOT);
       
-      Hist._h2DOccInfo[i][0]  = occInfoDir.make<TH2F>(Form("hNSDVsLum_%i" ,i),"inst lum vs nStrawDigi; p/#mu-bunch; nStrawDigi",  1000, 1e6, 4e8, 5000, 0., 20000.);
-      Hist._h2DOccInfo[i][1]  = occInfoDir.make<TH2F>(Form("hNCDVsLum_%i" ,i),"inst lum vs nCaloDigi; p/#mu-bunch; nCaloDigi"  ,  1000, 1e6, 4e8, 5000, 0., 20000.);
+      Hist._h2DOccInfo[i][0]  = occInfoDir.make<TH2F>(Form("hNSDVsLum_%i" ,i),"inst lum vs nStrawDigi; p/#mu-bunch; nStrawDigi",  1000, _minPOT, _maxPOT, 5000, 0., 20000.);
+      Hist._h2DOccInfo[i][1]  = occInfoDir.make<TH2F>(Form("hNCDVsLum_%i" ,i),"inst lum vs nCaloDigi; p/#mu-bunch; nCaloDigi"  ,  1000, _minPOT, _maxPOT, 5000, 0., 20000.);
     }
     
     for (int i=_nTrackTrig*2; i<_nTrackTrig*2+_nCaloTrig; ++i){
       art::TFileDirectory occInfoDir = Tfs->mkdir(Form("occInfoCaloTrig_%i", i));
-      Hist._hOccInfo  [i][0]  = occInfoDir.make<TH1F>(Form("hInstLum_%i"  ,i),"distrbution of instantaneous lum; p/#mu-bunch"  ,  1000, 1e6, 4e8);
+      Hist._hOccInfo  [i][0]  = occInfoDir.make<TH1F>(Form("hInstLum_%i"  ,i),"distrbution of instantaneous lum; p/#mu-bunch"  ,  1000, _minPOT, _maxPOT);
       			    
-      Hist._h2DOccInfo[i][0]  = occInfoDir.make<TH2F>(Form("hNSDVsLum_%i" ,i),"inst lum vs nStrawDigi; p/#mu-bunch; nStrawDigi",  1000, 1e6, 4e8, 5000, 0., 20000.);
-      Hist._h2DOccInfo[i][1]  = occInfoDir.make<TH2F>(Form("hNCDVsLum_%i" ,i),"inst lum vs nCaloDigi; p/#mu-bunch; nCaloDigi"  ,  1000, 1e6, 4e8, 5000, 0., 20000.);
+      Hist._h2DOccInfo[i][0]  = occInfoDir.make<TH2F>(Form("hNSDVsLum_%i" ,i),"inst lum vs nStrawDigi; p/#mu-bunch; nStrawDigi",  1000, _minPOT, _maxPOT, 5000, 0., 20000.);
+      Hist._h2DOccInfo[i][1]  = occInfoDir.make<TH2F>(Form("hNCDVsLum_%i" ,i),"inst lum vs nCaloDigi; p/#mu-bunch; nCaloDigi"  ,  1000, _minPOT, _maxPOT, 5000, 0., 20000.);
     }
     
      int    index_last = _nTrackTrig+_nCaloTrig;
      art::TFileDirectory occInfoDir = Tfs->mkdir("occInfoGeneral");
-     Hist._hOccInfo  [index_last][0]  = occInfoDir.make<TH1F>(Form("hInstLum_%i"  ,index_last),"distrbution of instantaneous lum; p/#mu-bunch"  ,  1000, 1e6, 4e8);
+     Hist._hOccInfo  [index_last][0]  = occInfoDir.make<TH1F>(Form("hInstLum_%i"  ,index_last),"distrbution of instantaneous lum; p/#mu-bunch"  ,  1000, _minPOT, _maxPOT);
       
-     Hist._h2DOccInfo[index_last][0]  = occInfoDir.make<TH2F>(Form("hNSDVsLum_%i" ,index_last),"inst lum vs nStrawDigi; p/#mu-bunch; nStrawDigi",  1000, 1e6, 4e8, 5000, 0., 20000.);
-     Hist._h2DOccInfo[index_last][1]  = occInfoDir.make<TH2F>(Form("hNCDVsLum_%i" ,index_last),"inst lum vs nCaloDigi; p/#mu-bunch; nCaloDigi"  ,  1000, 1e6, 4e8, 5000, 0., 20000.);
+     Hist._h2DOccInfo[index_last][0]  = occInfoDir.make<TH2F>(Form("hNSDVsLum_%i" ,index_last),"inst lum vs nStrawDigi; p/#mu-bunch; nStrawDigi",  1000, _minPOT, _maxPOT, 5000, 0., 20000.);
+     Hist._h2DOccInfo[index_last][1]  = occInfoDir.make<TH2F>(Form("hNCDVsLum_%i" ,index_last),"inst lum vs nCaloDigi; p/#mu-bunch; nCaloDigi"  ,  1000, _minPOT, _maxPOT, 5000, 0., 20000.);
  
 	
     
@@ -614,9 +655,7 @@ namespace mu2e {
       }   
     }
 
-
     int    indexTrigInfo11(0);
-
     //fill the histograms
     for (size_t i=0; i<_trigAll.size(); ++i ){
       _sumHist._hTrigInfo  [0]->GetXaxis()->SetBinLabel(i+1, _trigAll[i].label.c_str());
@@ -794,6 +833,105 @@ namespace mu2e {
 
   void ReadTriggerInfo::endSubRun(const art::SubRun& sr){}
 
+  bool ReadTriggerInfo::goodTrkTanDip(const mu2e::KalSeed*Ks){
+    const mu2e::KalSegment* kSeg = &(Ks->segments().at(0));
+    float tanDip = kSeg->helix().tanDip();
+    if ( (tanDip > _trkMinTanDip) && (tanDip< _trkMaxTanDip) ) return true;
+
+    return false;
+  }
+
+  void ReadTriggerInfo::fillTrackEfficiencyHist(const mu2e::KalSeedCollection* KsCol, 
+						const mu2e::TrkQualCollection* TrkQualCol, 
+						const art::TriggerResults*     TrigResults,
+						const mu2e::StepPointMCCollection* Steps){
+
+    float pCEleCuts[2]={103., 105.};
+    float pCPosCuts[2]={90.5, 92.5};
+
+    const mu2e::HelixSeed* hs(0);
+
+    if (KsCol != NULL){
+      const mu2e::KalSeed*ks(0);
+      for (size_t i=0; i<KsCol->size(); ++i){
+	ks = &KsCol->at(i);
+	const mu2e::KalSegment* kSeg = &(ks->segments().at(0));
+	float p = kSeg->mom();
+
+	if (ks->particle().particleType() == TrkParticle::type::e_minus){
+	    if ((p<pCEleCuts[0]) || (p>pCEleCuts[1]) )
+	      continue;
+	} else 	if  (ks->particle().particleType() == TrkParticle::type::e_plus){
+	  if ((p<pCPosCuts[0]) || (p>pCPosCuts[1]) )
+	    continue;
+	}
+	if ( (TrkQualCol->at(i).MVAOutput()<_trkMinMVA) || 
+	     (!goodTrkTanDip(ks)) || // [0.5, 1.0]
+	     (std::abs(kSeg->helix().d0()) > _trkMaxD0) ) continue;
+	_sumHist._hTrigInfo[16]->Fill(_nPOT);
+	
+	float ks_t0 = ks->t0()._t0;
+	float t0Toll(80.);
+	bool  hasCprHelix(false), hasTprHelix(false);
+	for (size_t i=0; i<_hsCprCol->size(); ++i){
+	  hs = &_hsCprCol->at(i);
+	  float  hs_t0 = hs->t0()._t0;
+	  if (std::abs(hs_t0 - ks_t0)<t0Toll){
+	    hasCprHelix = true;
+	    break;
+	  }
+	}
+
+	for (size_t i=0; i<_hsTprCol->size(); ++i){
+	  hs = &_hsTprCol->at(i);
+	  float  hs_t0 = hs->t0()._t0;
+	  if (std::abs(hs_t0 - ks_t0)<t0Toll){
+	    hasTprHelix = true;
+	    break;
+	  }
+	}
+	
+	if ( hasCprHelix){
+	  _sumHist._hTrigInfo[20]->Fill(_nPOT);	  
+	}
+	if ( hasTprHelix ){
+	  _sumHist._hTrigInfo[21]->Fill(_nPOT);	  	
+	}
+	
+	for (size_t j=0; j<_effBits.size(); ++j){
+	  if (TrigResults->accept(_effBits[j])){
+	    _sumHist._hTrigInfo[17]->Fill(_nPOT);	  
+	    break;
+	  }
+	}//end loop over the good effBits
+      }//end loop over the tracks
+    }
+
+    if (Steps != NULL){
+      const mu2e::StepPointMC* step(0);
+      for ( size_t i=0; i<Steps->size(); ++i ){
+	step = &Steps->at(i);
+	int id = step->volumeId();
+	if ( (id == 13) || (id == 14)){//Tracker front face
+	  if ( !(step->simParticle()->fromGenerator()) )                    continue;
+	  if (step->simParticle()->genParticle()->generatorId().id() != 43) continue;
+	
+	  int   pdg = step->simParticle()->pdgId();
+	  float p   = step->momentum().mag();
+	
+	  if ( (pdg == 11) && (p>=pCEleCuts[0]) && (p<=pCEleCuts[1])){
+	    _sumHist._hTrigInfo[18]->Fill(_nPOT);
+	    break;
+	  }else if ( (pdg == -11) && (p>=pCPosCuts[0]) && (p<=pCPosCuts[1])){
+	    _sumHist._hTrigInfo[18]->Fill(_nPOT);
+	    break;
+	  }
+	}
+      }//end loop over the virtual-det hits
+    }
+  }
+
+  //--------------------------------------------------------------------------------
   void ReadTriggerInfo::analyze(const art::Event& event) {
 
     //get the number of POT
@@ -803,11 +941,15 @@ namespace mu2e {
     if (evtWeightH.isValid()){
       _nPOT  = (double)evtWeightH->intensity();
     }
+    _sumHist._hTrigInfo[19]->Fill(_nPOT);
 
-    //    std::vector<art::Handle<TriggerInfo> > hTrigInfoVec;
+    art::Handle<StepPointMCCollection> vdH;
+    event.getByLabel(_vdTag, vdH);
+    const mu2e::StepPointMCCollection*vdSteps(0);
+    if (vdH.isValid()){
+      vdSteps = vdH.product();
+    }
     
-    //    event.getManyByType(hTrigInfoVec);
-
     //get the TriggerResult
     art::InputTag const tag{Form("TriggerResults::%s", _processName.c_str())};  
     auto const trigResultsH   = event.getValidHandle<art::TriggerResults>(tag);
@@ -819,6 +961,37 @@ namespace mu2e {
       if (trigNavig.accepted(path)) _sumHist._hTrigInfo[15]->Fill((double)i);
     }
     
+    art::Handle<mu2e::HelixSeedCollection>  hsCprH;
+    event.getByLabel(_hsCprTag, hsCprH);
+    if (hsCprH.isValid()){
+      _hsCprCol = hsCprH.product();
+    }else {
+      _hsCprCol = NULL;
+    }
+
+    art::Handle<mu2e::HelixSeedCollection>  hsTprH;
+    event.getByLabel(_hsTprTag, hsTprH);
+    if (hsTprH.isValid()){
+      _hsTprCol = hsTprH.product();
+    }else {
+      _hsTprCol = NULL;
+    }
+
+    art::Handle<mu2e::KalSeedCollection>  ksH;
+    const mu2e::KalSeedCollection*        ksCol(0);
+    event.getByLabel(_ksTag, ksH);
+    if (ksH.isValid()){
+      ksCol = ksH.product();
+    }
+    art::Handle<mu2e::TrkQualCollection> trkQualH;
+    const mu2e::TrkQualCollection*       trkQualCol(0);
+    event.getByLabel(_trkQualTag, trkQualH);
+    if (trkQualH.isValid()) {
+      trkQualCol = trkQualH.product();
+    }
+
+    fillTrackEfficiencyHist(ksCol, trkQualCol, trigResults, vdSteps);
+
     //get the strawDigiMC truth if present
     art::Handle<mu2e::StrawDigiMCCollection> mcdH;
     event.getByLabel(_sdMCTag, mcdH);
@@ -924,7 +1097,8 @@ namespace mu2e {
 	  }
 	  
 
-	  if ( moduleLabel.find("caloMVACEFilter") || moduleLabel.find("TSFilter")){ 
+	  if ( (moduleLabel.find("caloMVACEFilter")!= std::string::npos) || 
+	       (moduleLabel.find("TSFilter")       != std::string::npos)  ){ 
 	    findTrigIndex(_trigFinal, moduleLabel, index);
 	    _trigFinal[index].label    = moduleLabel;
 	    _trigFinal[index].counts   = _trigFinal[index].counts + 1;
@@ -948,14 +1122,19 @@ namespace mu2e {
   
   void   ReadTriggerInfo::findTrigIndex(std::vector<trigInfo_> &Vec, std::string& ModuleLabel, int &Index){
     //reset the index value
-    Index = 0;
-    for (size_t i=0; i<Vec.size(); ++i){
-      if (Vec[i].label == ModuleLabel) { 
+    Index  = 0;
+    size_t offset = 0;
+    if ( ModuleLabel.find(std::string("tpr")) != std::string::npos) {
+      offset = 10;
+      Index  = 10; 
+    }
+    for (size_t i=offset; i<Vec.size(); ++i){
+      if ( (Vec[i].label == ModuleLabel) || (Vec[i].label == "") ) { 
 	Index = i;
 	break;
-      }else if (Vec[i].label != ""){
-	Index = i+1;
-      }
+      }// else if (Vec[i].label != ""){
+      // 	Index = i+1;
+      // }
     }
   }
 

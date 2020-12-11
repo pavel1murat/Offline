@@ -55,16 +55,16 @@ namespace mu2e
     _minnphi(pset.get<unsigned>("MinNPhi",2)),//5)),//FIXME!
     _maxniter(pset.get<unsigned>("maxniter",100)),
     _minzsep(pset.get<float>("minzsep",100.0)),
-    _maxzsep(pset.get<float>("maxzsep",500.0)),
+    _maxzsep(pset.get<float>("maxzsep",1000.0)),
     _mindphi(pset.get<float>("mindphi",0.5)),
-    _maxdphi(pset.get<float>("maxdphi",2.5)),
+  // _maxdphi(pset.get<float>("maxdphi",2.5)),
     _sigmaPhi(pset.get<float>("sigmaPhi",0.49)),//1636)),// rad
-    _mindist(pset.get<float>("mindist",100.0)), // mm
-    _maxdist(pset.get<float>("maxdist",500.0)), // mm
+    _mindist(pset.get<float>("mindist",50.0)), // mm
+    _maxdist(pset.get<float>("maxdist",2000.0)), // mm
     _maxdxy(pset.get<float>("maxdxy",100.0)),
     _maxXDPhi(pset.get<float>("maxXDPhi",5.0)), 
     _rmin(pset.get<float>("minR",160.0)), // mm
-    _rmax(pset.get<float>("maxR",320.0)), // mm
+    _rmax(pset.get<float>("maxR",600.0)), // mm
     _rcmin(pset.get<float>("minCenterR",140.0)), // mm
     _rcmax(pset.get<float>("maxCenterR",410.0)), // mm
     //    _mindelta(pset.get<float>("minDelta",500.0)),
@@ -76,7 +76,7 @@ namespace mu2e
     _errrwt(pset.get<bool>("HitErrorWeight",false)),
     _usecc(pset.get<bool>("UseCaloCluster",false)),
     _ccwt(pset.get<float>("CaloClusterWeight",10.0)), // Cluster weight in units of non-stereo hits
-    _targetradius(pset.get<float>("targetradius",100.0)), // effective target radius (mm)
+    _targetradius(pset.get<float>("targetradius",600.0)), // effective target radius (mm)
     _trackerradius(pset.get<float>("trackerradius",700.0)), // tracker out radius; (mm)
     _rwind(pset.get<float>("RadiusWindow",10.0)), // window for calling a point to be 'on' the helix in the AGG fit (mm)
     _hphi("hphi","phi value",_nphibins,-_phifactor*CLHEP::pi,_phifactor*CLHEP::pi),
@@ -84,13 +84,13 @@ namespace mu2e
     _ntripleMax(pset.get<unsigned>("ntripleMax",500)),
     _use_initFZ_from_dzFrequency(pset.get<bool>("use_initFZ_from_dzFrequency",false)),
     _initFZMinL(pset.get<float>("initFZMinLambda",30.)),
-    _initFZMaxL(pset.get<float>("initFZMaxLambda",530.)),
+    _initFZMaxL(pset.get<float>("initFZMaxLambda",1000.)),
     _initFZStepL(pset.get<float>("initFZStepLambda",20.)),
     _fitFZMinL(pset.get<float>("fitFZMinLambda",10.)),
-    _fitFZMaxL(pset.get<float>("fitFZMaxLambda",510.)),
+    _fitFZMaxL(pset.get<float>("fitFZMaxLambda",1000.)),
     _fitFZStepL(pset.get<float>("fitFZStepLambda",4.))
-  {
-    float minarea(pset.get<float>("minArea",5000.0));
+  { _maxdphi=_minzsep/_initFZMinL;
+    float minarea(pset.get<float>("minArea",500.0));
     _minarea2    = minarea*minarea;
     _initFZNBins = (int)((_initFZMaxL - _initFZMinL)/_initFZStepL);
     _fitFZNBins  = (int)((_fitFZMaxL - _fitFZMinL)/_fitFZStepL);
