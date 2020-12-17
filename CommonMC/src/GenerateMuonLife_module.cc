@@ -56,14 +56,18 @@ namespace mu2e {
           };
 
       fhicl::Atom<int> verbosityLevel{ Name("verbosityLevel"), Comment("Levels 0, 1, and 11 increase the number of printouts.."), 0 };
+
+      fhicl::Atom<long int> seed{ Name("seed"), Comment("starting seed, default: from SeedService"), art::ServiceHandle<SeedService>()->getSeed() };
     };
 
     using Parameters = art::EDProducer::Table<Config>;
     explicit GenerateMuonLife(const Parameters& conf);
 
+    virtual void beginJob() override ;
     virtual void produce(art::Event& e) override;
 
   private:
+    long int   seed_;
     CLHEP::RandExponential  rexp_;
     double mean_;
     int  verbosityLevel_;
@@ -73,7 +77,9 @@ namespace mu2e {
   //================================================================
   GenerateMuonLife::GenerateMuonLife(const Parameters& conf)
     : EDProducer{conf}
-    , rexp_(createEngine( art::ServiceHandle<SeedService>()->getSeed() ))
+    , seed_(conf().seed())
+    //    , rexp_(createEngine( art::ServiceHandle<SeedService>()->getSeed() ))
+    , rexp_(createEngine(seed_))
     , mean_(conf().meanLife())
     , verbosityLevel_(conf().verbosityLevel())
     {
@@ -88,10 +94,16 @@ namespace mu2e {
         GlobalConstantsHandle<PhysicsParams> phyPar;
         mean_ = phyPar->getDecayTime();
       }
-      if(verbosityLevel_ > 0) {
-        std::cout<<"GenerateMuonLife initialized with meanLife = "<<mean_<<std::endl;
-      }
     }
+
+  //================================================================
+  void GenerateMuonLife::beginJob() {
+
+    if (verbosityLevel_ > 0) {
+      std::cout<<"GenerateMuonLife:" <<  this->moduleDescription().moduleLabel() << " starting seed:  " << seed_<< std::endl;
+      std::cout<<"GenerateMuonLife:" <<  this->moduleDescription().moduleLabel() << " initialized with meanLife = "<<mean_<<std::endl;
+    }
+  }
 
   //================================================================
   void GenerateMuonLife::produce(art::Event& event) {

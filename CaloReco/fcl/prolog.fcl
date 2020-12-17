@@ -34,14 +34,20 @@ CaloRecoDigiFromDigi :
 }
 
 
+#------------------------------------------------------------------------------
+# 1-batch 2024-2025 running mode: aCorr=6.745 bCorr=0.204
+# 2-batch           running mode: aCorr=8.075 bCorr=0.209
+# Noise levels are from doc-db 35519, DAQ jitter is from doc-db 35392 assuming ~7 DTCs in chain
+#------------------------------------------------------------------------------
 CaloCrystalHitFromHit:
 {
     module_type           : CaloCrystalHitFromHit
     caloDigisModuleLabel  : CaloRecoDigiFromDigi	    	    
     time4Merge            : 4.0   #ns
     diagLevel             : 0
+    aCorr                 : 0     # noise corrections
+    bCorr                 : 0     # 
 }
-
 
 
 CaloReco : 

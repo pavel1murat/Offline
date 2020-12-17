@@ -6,7 +6,7 @@
 //  $Date: 2013/10/21 20:44:04 $
 //
 // Original author Robert Bernstein
-//
+// Added 
 
 #include "CLHEP/Units/SystemOfUnits.h"
 #include "ConditionsService/inc/ConditionsHandle.hh"
@@ -115,7 +115,7 @@ namespace mu2e {
     art::ServiceHandle<art::TFileService> tfs;
 
     _ntAntiProtonSteps = tfs->make<TNtuple>( "ntpbars", "AntiProtonSteps ntuple",
-					     "run:evt:trk:pdg:time:x:y:z:gtime:initialPbarCosTheta:momentum:initialProtonMomentum:currentKE:px:py:pz");
+					     "run:evt:trk:pdg:time:x:y:z:gtime:xsecInitialPbarCosTheta:mu2eInitialPbarCosTheta:momentum:initialProtonMomentum:currentKE:px:py:pz");
   }
 
   void ReadAntiProtonSteps::beginRun(art::Run const& run){
@@ -126,7 +126,7 @@ namespace mu2e {
 
     ++_nAnalyzed;
 
-    if (_diagLevel > 0)
+    if (_diagLevel > 1)
       {
 	std::cout << " \n \n \n hi, nAnalyzed = " << _nAnalyzed << std::endl;
       }
@@ -158,18 +158,18 @@ namespace mu2e {
       {
 	for (auto iGen : genParticles )
 	  {
-	    if (_diagLevel > 0)
+	    if (_diagLevel > 1)
 	      {
 		std::cout << " particle id " << iGen.pdgId() << " particle momentum " << iGen.momentum() << " position " << iGen.position() << std::endl;
 	      }
 	    if (iGen.pdgId() == PDGCode::proton)
 	      {
-		//		initialProtonFourMomentum = iGen.momentum();
+		initialProtonFourMomentum = iGen.momentum();
 	      }
 	  }
       } 
 
-    if (_diagLevel > 0){
+    if (_diagLevel > 1){
       std::cout << "about to print size of hits" << std::endl;
       std::cout << " size of hits " << hits.isValid() << " " << hits->size()  << std::endl;
     }
@@ -199,7 +199,7 @@ namespace mu2e {
 	    } else {
 	      SimParticle const& sim = simParticles->at(trackId);
 	      pdgId = sim.pdgId();
-	      for (auto iPDG : pdg_save)
+	      for (auto iPDG : pdg_save)        //look only at antiprotons
 		{
 		  if (pdgId == iPDG)
 		    {
@@ -214,10 +214,11 @@ namespace mu2e {
 		      startingFourMomentum = originalParticle.startMomentum();
 		      startingPosition     = originalParticle.startPosition();
 		      currentKE = sqrt( mom.mag()*mom.mag() + pbarMass2) - pbarMass;
-		      initialProtonFourMomentum = (sim.parent())->endMomentum();
+		      //initialProtonFourMomentum = (sim.parent())->endMomentum();
 		      if (_diagLevel > 0)
 			{
 			  std::cout << "\n inside hit number: " << i << std::endl;
+			  std::cout << "\n sim.parent().pdgId: " << (sim.parent())->pdgId() << std::endl;
 		  
 			  std::cout << "starting momentum = " << startingFourMomentum << std::endl;
 			  std::cout << "starting cos theta = " << startingFourMomentum.cosTheta() << std::endl;
@@ -251,12 +252,13 @@ namespace mu2e {
 	      // get angle of initial proton to pbar; convert from HepDouble whatever that is
 	      nt[9] =    (initialProtonFourMomentum.vect().dot(startingFourMomentum.vect()))
 		/(initialProtonFourMomentum.vect().mag()*startingFourMomentum.vect().mag());
-	      nt[10] = startingFourMomentum.vect().mag(); 
-	      nt[11] = initialProtonFourMomentum.vect().mag();
-	      nt[12] = currentKE;
-	      nt[13] = mom.x();
-	      nt[14] = mom.y();
-	      nt[15] = mom.z();
+	      nt[10] = startingFourMomentum.cosTheta();
+	      nt[11] = startingFourMomentum.vect().mag(); 
+	      nt[12] = initialProtonFourMomentum.vect().mag();
+	      nt[13] = currentKE;
+	      nt[14] = mom.x();
+	      nt[15] = mom.y();
+	      nt[16] = mom.z();
 
 	      if (_diagLevel > 0)
 		{

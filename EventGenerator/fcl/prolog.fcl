@@ -138,6 +138,19 @@ PrimaryProtonGun: { module_type : PrimaryProtonGun
     mean	      : -1.
 
 }
+PrimaryAntiProtonGun: { 
+    module_type : PrimaryAntiProtonGun
+    verbosityLevel    : 0
+    czmin	      : -1.
+    czmax	      : -1.
+    phimin	      : -3.1415
+    phimax	      : 3.1415
+    pLowFlat          : 0.
+    pHighFlat         : 9.
+    doHistograms      : true
+    inputModuleLabel  : "g4run"
+    weightmode        : 1
+}
 
 StoppedParticleReactionGun: { @table::CeEndpointGun
     physics:  { @table::CeEndpointGun.physics

@@ -27,8 +27,11 @@
 #include "GlobalConstantsService/inc/ParticleDataTable.hh"
 #include "GlobalConstantsService/inc/PhysicsParams.hh"
 #include "DataProducts/inc/PDGCode.hh"
+
+#include "MCDataProducts/inc/EventWeight.hh"
 #include "MCDataProducts/inc/GenParticle.hh"
 #include "MCDataProducts/inc/GenParticleCollection.hh"
+
 #include "Mu2eUtilities/inc/RandomUnitSphere.hh"
 #include "Mu2eUtilities/inc/CzarneckiSpectrum.hh"
 #include "Mu2eUtilities/inc/ConversionSpectrum.hh"
@@ -40,12 +43,11 @@
 #include "GeneralUtilities/inc/RSNTIO.hh"
 
 #include "TH1.h"
-#include "TH2.h"
 
 namespace mu2e {
 
   //================================================================
-  class StoppedParticleReactionGun : public art::EDProducer {
+  class StoppedParticleReactionGunPion : public art::EDProducer {
     fhicl::ParameterSet psphys_;
 
     PDGCode::type       pdgId_;
@@ -57,38 +59,35 @@ namespace mu2e {
     BinnedSpectrum    spectrum_;
     GenId             genId_;
     int               verbosityLevel_;
-    long int          seed_;
 
     art::RandomNumberGenerator::base_engine_t& eng_;
-    CLHEP::RandGeneral randSpectrum_;
-    RandomUnitSphere   randomUnitSphere_;
+    CLHEP::RandGeneral     randSpectrum_;
+    //    CLHEP::RandExponential randTime_;
+    RandomUnitSphere       randomUnitSphere_;
 
-    RootTreeSampler<IO::StoppedParticleF> stops_;
-    double                                fixedTime_;
+    RootTreeSampler<IO::StoppedParticleTauNormF> stops_;
 //-----------------------------------------------------------------------------
 // histogramming
 //-----------------------------------------------------------------------------
     bool    doHistograms_;
-    TH1F*   _hEnergy[2];
-    TH1F*   _hMom;
+    TH1F*   _hEnergy;
     TH1F*   _hPdgId;
     TH1F*   _hGenId;
     TH1F*   _hTime;
-    TH1F*   _hZ[2];
-    TH2F*   _hRVsZ;
+    TH1F*   _hZ;
   
   private:
     static SpectrumVar    parseSpectrumVar(const std::string& name);
     double                generateEnergy();
     
   public:
-    explicit StoppedParticleReactionGun(const fhicl::ParameterSet& pset);
+    explicit StoppedParticleReactionGunPion(const fhicl::ParameterSet& pset);
 
     virtual void produce(art::Event& event);
   };
 
   //================================================================
-  StoppedParticleReactionGun::StoppedParticleReactionGun(const fhicl::ParameterSet& pset)
+  StoppedParticleReactionGunPion::StoppedParticleReactionGunPion(const fhicl::ParameterSet& pset)
     : EDProducer{pset}
     , psphys_(pset.get<fhicl::ParameterSet>("physics"))
     , pdgId_(PDGCode::type(psphys_.get<int>("pdgId")))
@@ -97,34 +96,33 @@ namespace mu2e {
     , spectrum_(BinnedSpectrum(psphys_))
     , genId_(GenId::findByName(psphys_.get<std::string>("genId")))
     , verbosityLevel_(pset.get<int>("verbosityLevel", 0))
-    , seed_(pset.get<long int>("seed",art::ServiceHandle<SeedService>()->getSeed()))
-    , eng_(createEngine(seed_))
+    , eng_(createEngine(art::ServiceHandle<SeedService>()->getSeed()))
     , randSpectrum_(eng_, spectrum_.getPDF(), spectrum_.getNbins())
     , randomUnitSphere_(eng_)
-    , stops_(eng_, pset.get<fhicl::ParameterSet>("muonStops"))
-    , fixedTime_          (pset.get<double>("fixedTime"   ))
-    , doHistograms_       (pset.get<bool>  ("doHistograms"))
+      //    , stops_(eng_, pset.get<fhicl::ParameterSet>("muonStops"))
+    , stops_(eng_, pset.get<fhicl::ParameterSet>("pionStops"))
+    , doHistograms_       (pset.get<bool>("doHistograms",true ) )
   {
     produces<mu2e::GenParticleCollection>();
+    produces<mu2e::EventWeight>();
 
     if(genId_ == GenId::enum_type::unknown) {
-      throw cet::exception("BADCONFIG")<<"StoppedParticleReactionGun: unknown genId "
-                                       <<psphys_.get<std::string>("genId", "StoppedParticleReactionGun")
+      throw cet::exception("BADCONFIG")<<"StoppedParticleReactionGunPion: unknown genId "
+                                       <<psphys_.get<std::string>("genId", "StoppedParticleReactionGunPion")
                                        <<"\n";
     }
 
     if (verbosityLevel_ > 0) {
-      std::cout<<"StoppedParticleReactionGun: using = "
+      std::cout<<"StoppedParticleReactionGunPion: using = "
                <<stops_.numRecords()
                <<" stopped particles"
                <<std::endl;
 
-      std::cout<<"StoppedParticleReactionGun: using seed  = " << seed_  << std::endl;
-      std::cout<<"StoppedParticleReactionGun: using GenId = " << genId_ << std::endl;
+      std::cout<<"StoppedParticleReactionGunPion: using GenId = " << genId_ << std::endl;
 
-      std::cout<<"StoppedParticleReactionGun: producing particle "<< pdgId_ << ", mass = "<< mass_ << std::endl;
+      std::cout<<"StoppedParticleReactionGunPion: producing particle "<< pdgId_ << ", mass = "<< mass_ << std::endl;
 
-      std::cout <<"StoppedParticleReactionGun: spectrum shape = "
+      std::cout <<"StoppedParticleReactionGunPion: spectrum shape = "
 		<<psphys_.get<std::string>("spectrumShape") << std::endl;
       if (psphys_.get<std::string>("spectrumShape")  == "tabulated")
 	std::cout << " Spectrum file = "
@@ -132,38 +130,34 @@ namespace mu2e {
 		  << std::endl;
     }
     if (verbosityLevel_ > 1){
-      std::cout <<"StoppedParticleReactionGun: spectrum: " << std::endl;
+      std::cout <<"StoppedParticleReactionGunPion: spectrum: " << std::endl;
       spectrum_.print();
     }
 
     if ( doHistograms_ ) {
       art::ServiceHandle<art::TFileService> tfs;
-      //      art::TFileDirectory tfdir = tfs->mkdir( "StoppedParticleReactionGun");
-      _hEnergy[0] = tfs->make<TH1F>("hEnergy" , "Energy[0]"   , 2400,   0.0,   120);
-      _hEnergy[1] = tfs->make<TH1F>("hEnergy2", "Energy[1]"   , 2400,   0.0,  1200);
-      _hMom       = tfs->make<TH1F>("hMom"    , "Momentum"    ,  500,   0.0,  1000);
-      _hGenId     = tfs->make<TH1F>("hGenId"  , "Generator ID",  100,   0.0,   100);
-      _hPdgId     = tfs->make<TH1F>("hPdgId"  , "PDG ID"      ,  500,  -250,   250);
-      _hTime      = tfs->make<TH1F>("hTime"   , "Time"        ,  400,   0.0,  2000);
-      _hZ[0]      = tfs->make<TH1F>("hZ"      , "Z"           ,  500,  5400,  6400);
-      _hZ[1]      = tfs->make<TH1F>("hZ2"     , "Z[1]"        , 2500,     0, 25000);
-      _hRVsZ      = tfs->make<TH2F>("hRvsZ"   , "R vs Z]"     , 2500,     0, 25000, 100,0,1000);
+      //      art::TFileDirectory tfdir = tfs->mkdir( "StoppedParticleReactionGunPion");
+      _hEnergy = tfs->make<TH1F>("hEnergy", "Energy"      , 2400,   0.0,  120);
+      _hGenId  = tfs->make<TH1F>("hGenId" , "Generator ID",  100,   0.0,  100);
+      _hPdgId  = tfs->make<TH1F>("hPdgId" , "PDG ID"      ,  500,  -250, 250);
+      _hTime   = tfs->make<TH1F>("hTime"  , "Time"        ,  400,   0.0, 2000.);
+      _hZ      = tfs->make<TH1F>("hZ"     , "Z"           ,  500,  5400, 6400);
 
     }
   }
 
 
   //================================================================
-  StoppedParticleReactionGun::SpectrumVar StoppedParticleReactionGun::parseSpectrumVar(const std::string& name) {
+  StoppedParticleReactionGunPion::SpectrumVar StoppedParticleReactionGunPion::parseSpectrumVar(const std::string& name) {
     if (name == "totalEnergy"  )  return TOTAL_ENERGY;
     if (name == "kineticEnergy")  return KINETIC_ENERY;
     if (name == "momentum"     )  return MOMENTUM;
-    throw cet::exception("BADCONFIG")<<"StoppedParticleReactionGun: unknown spectrum variable "<<name<<"\n";
+    throw cet::exception("BADCONFIG")<<"StoppedParticleReactionGunPion: unknown spectrum variable "<<name<<"\n";
   }
 
 
   //================================================================
-  void StoppedParticleReactionGun::produce(art::Event& event) {
+  void StoppedParticleReactionGunPion::produce(art::Event& event) {
 
     std::unique_ptr<GenParticleCollection> output(new GenParticleCollection);
 
@@ -172,11 +166,7 @@ namespace mu2e {
     const CLHEP::Hep3Vector pos(stop.x, stop.y, stop.z);
 
     const double energy = generateEnergy();
-    const double p      = sqrt(energy*energy-mass_*mass_);
-
-    double time = stop.t;
-
-    if (fixedTime_ >= 0) time = fixedTime_;
+    const double p = energy * sqrt(1 - std::pow(mass_/energy,2));
 
     CLHEP::Hep3Vector p3 = randomUnitSphere_.fire(p);
     CLHEP::HepLorentzVector fourmom(p3, energy);
@@ -184,26 +174,25 @@ namespace mu2e {
                          genId_,
                          pos,
                          fourmom,
-                         time);
+			 //                         stop.t+1000.); // good thing
+                         stop.t);
 
     event.put(std::move(output));
+//-----------------------------------------------------------------------------
+// event weight assigned by the generator is defined py the pion survival probability
+//-----------------------------------------------------------------------------
+    double timingWeight = exp(-stop.tauNormalized);
+    std::unique_ptr<EventWeight> pw(new EventWeight(timingWeight));
+    event.put(std::move(pw));
 //-----------------------------------------------------------------------------
 // if requested, fill histograms. Currently, the only one
 //-----------------------------------------------------------------------------
     if (doHistograms_) {
       _hGenId->Fill(genId_.id());
       _hPdgId->Fill(pdgId_);
-      _hEnergy[0]->Fill(energy);
-      _hEnergy[1]->Fill(energy);
-      _hMom->Fill(p);
+      _hEnergy->Fill(energy);
       _hTime->Fill(stop.t);
-      _hZ[0]->Fill(pos.z());
-      _hZ[1]->Fill(pos.z());
-
-      float dx = stop.x+3904;
-      float r  = sqrt(dx*dx+stop.y*stop.y);
-
-      _hRVsZ->Fill(pos.z(),r);
+      _hZ->Fill(pos.z());
     }
   }
 
@@ -212,11 +201,11 @@ namespace mu2e {
 // the spectrum itself doesn't know whether is stored momentum, kinetic or full 
 // energy
 //-----------------------------------------------------------------------------
-  double StoppedParticleReactionGun::generateEnergy() {
+  double StoppedParticleReactionGunPion::generateEnergy() {
     double res = spectrum_.sample(randSpectrum_.fire());
 
     if (res < 0.0) {
-      throw cet::exception("BADE")<<"StoppedParticleReactionGun: negative energy "<< res <<"\n";
+      throw cet::exception("BADE")<<"StoppedParticleReactionGunPion: negative energy "<< res <<"\n";
     }
 
     switch(spectrumVariable_) {
@@ -230,4 +219,4 @@ namespace mu2e {
   //================================================================
 } // namespace mu2e
 
-DEFINE_ART_MODULE(mu2e::StoppedParticleReactionGun);
+DEFINE_ART_MODULE(mu2e::StoppedParticleReactionGunPion);

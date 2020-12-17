@@ -59,6 +59,7 @@ namespace mu2e {
 
   bool StrawDigiMCFilter::filter(art::Event& evt) {
     std::unique_ptr<SimParticlePtrCollection> output(new SimParticlePtrCollection());
+
     bool retval(false);
     auto mcdH = evt.getValidHandle<StrawDigiMCCollection>(_mcdigisTag);
     const StrawDigiMCCollection *mcdigis = mcdH.product();
@@ -91,6 +92,11 @@ namespace mu2e {
       }
     }
     evt.put(std::move(output));
+//------------------------------------------------------------------------------
+// Pmax < 0: pass all
+//-----------------------------------------------------------------------------
+    if (maxpmom_ <= 0) retval = true;
+
     return retval; 
   }
 

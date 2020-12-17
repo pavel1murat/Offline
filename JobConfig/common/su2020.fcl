@@ -16,6 +16,7 @@ BEGIN_PROLOG
   INPUT_MODULE  : EmptyEvent
   TRIGGER_PATHS : [ su2020_p1 ]
   PROCESS_NAME  : su2020
+  BLIND_TIME    : 500.                            # default start of digitization
 END_PROLOG
 
 #include "fcl/minimalMessageService.fcl"
@@ -35,7 +36,6 @@ END_PROLOG
 #include "CaloFilters/fcl/prolog_trigger.fcl"
 
 #include "JobConfig/common/trigger_templates.fcl"
-
 #include "JobConfig/common/su2020_mixing_templates.fcl"
 #include "JobConfig/common/su2020_templates.fcl"
 

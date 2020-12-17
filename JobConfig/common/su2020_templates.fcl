@@ -34,9 +34,9 @@ services.scheduler.wantSummary        : true
 services.TFileService.fileName        : "nts._USER_._DATASET_._DSCONF_.sequencer.root" 
 
 # Limit the amount of "Begin processing the ... record" messages
-mu2e.services.simServices.message.destinations.log.categories.ArtReport.reportEvery: 1
-mu2e.services.simServices.message.destinations.log.categories.ArtReport.limit: 1
-mu2e.services.simServices.message.destinations.log.categories.ArtReport.timespan: 300
+services.message.destinations.log.categories.ArtReport.reportEvery : 1
+services.message.destinations.log.categories.ArtReport.limit       : 10000
+services.message.destinations.log.categories.ArtReport.timespan    : 300
 #------------------------------------------------------------------------------
 # (2): definition of the input module - can redefine in the top-level prolog
 #------------------------------------------------------------------------------
@@ -67,10 +67,18 @@ su2020 : {
 	@table::CaloDigiMC.producers      # defined in CaloDigiMC
 	@table::CaloDigiMC.producersMC    # defined in CaloDigiMC
 	@table::CaloCluster.producersMC   # defined in CaloCluster
+	@table::CrvDAQPackage.producers   # 
 	@table::TrackerMC.producers       # defined in TrackerMC
 
 	compressDigiMCs : { @table::DigiCompression.Primary       # defined in Filters/fcl/
 	    crvDigiMCTag         : ""
+	}
+                                                                  # need these tags for mixing
+	makeSGSPrimary   : { @table::makeSGS }
+	                                                          # in mixing mode, still filter on primary
+	makeSDPrimary    : { @table::makeSD
+	    StrawGasStepModule : makeSGSPrimary
+	    TimeOffsets        : [ @sequence::CommonMC.TimeMapsPrimary ]
 	}
 
 	generate  : { @table::EventGenerator.producers.egun }      # to avoid unnecessary diagnostics
@@ -78,7 +86,7 @@ su2020 : {
 
 	# dummy protonBunchIntensity objects for primary-only datasets
 	protonBunchIntensity : { module_type: ProtonBunchIntensityFlat
-	    mean: 0.0 # No PBI possible for pure signal! 
+	    mean      : 0.0 # No PBI possible for pure signal! 
 	    halfWidth : 1.0
 	}
 #------------------------------------------------------------------------------
@@ -176,17 +184,6 @@ su2020 : {
 	@table::Trigger.analyzers
         genCountLogger            : { module_type: GenEventCountReader } # defalt: 1 StepPointMC, 10 MeV
     }
-#------------------------------------------------------------------------------
-# outputs: by default, keep everything
-#------------------------------------------------------------------------------
-    outputs: {
-	defaultOutput : { module_type : RootOutput
-	    SelectEvents  : [ @sequence::TRIGGER_PATHS ]
-	    outputCommands: [ "keep *_*_*_*" 
-			      # (example)		      , "drop uintmu2e::PhysicalVolumeInfomvstd::pairs_g4run_*_*"
-			     ]
-	}
-    }
 }
 
 #------------------------------------------------------------------------------
@@ -207,6 +204,7 @@ su2020.gen_sim_output       : [ "drop    *_*_*_*",
 su2020.gen_sim_digi_output  : [ "drop    *_*_*_*",
 				"keep    *_compressDigiMCs_*_*",
 				"keep    mu2e::GenEventCount_*_*_*",
+				"keep    mu2e::GenParticles_generate_photon_*",
 				"keep    mu2e::StatusG4_g4run_*_*",
 				"keep    mu2e::EventWeight_*_*_*",
 				"keep    mu2e::EventWindowMarker_EWMProducer_*_*",
@@ -220,14 +218,29 @@ su2020.gen_sim_digi_output  : [ "drop    *_*_*_*",
 #------------------------------------------------------------------------------
 # 2. output format for digi files after mixing
 #------------------------------------------------------------------------------
-su2020.mixing_output : [ "drop *_*_*_*"                         ,
-			 "keep *_compressDigiMCs_*_*"           ,
-			 "keep mu2e::EventWindowMarker_*_*_*"   ,
-			 "keep mu2e::ProtonBunchIntensity_*_*_*",
-			 "keep mu2e::StrawDigis_*_*_*"          ,
-			 "keep mu2e::CaloDigis_*_*_*"           ,
-			 "keep mu2e::CrvDigis_*_*_*"
+su2020.mixing_output : [ "drop *_*_*_*"                               ,
+			 "keep *_compressDigiMCs_*_*"                 ,
+			 "keep mu2e::EventWeight_*_*_*",
+			 "keep mu2e::EventWindowMarker_*_*_*"         ,
+			 "keep mu2e::ProtonBunchIntensity_*_*_*"      ,
+			 "keep mu2e::StrawDigis_*_*_*"                ,
+			 "keep mu2e::CaloDigis_*_*_*"                 ,
+			 "keep mu2e::CrvDigis_*_*_*"                  ,
+			 "keep art::TriggerResults_TriggerResults_*_*"
 			]
+
+su2020.outputs: {
+    defaultOutput : { module_type : RootOutput
+	SelectEvents  : [ @sequence::TRIGGER_PATHS ]
+	outputCommands: [ "keep *_*_*_*" 
+			  # (example)		      , "drop uintmu2e::PhysicalVolumeInfomvstd::pairs_g4run_*_*"
+			 ]
+    }
+    
+    FullOutput : { @table::Mixing.Output  outputCommands : [ "keep *_*_*_*"                  ] }
+    DetOutput  : { @table::Mixing.Output  outputCommands : [ @sequence::su2020.mixing_output ] }
+}
+
 #------------------------------------------------------------------------------
 # module sequences - by functionality
 #------------------------------------------------------------------------------
@@ -235,32 +248,36 @@ su2020.gen_g4              : [ generate, genCounter, g4run, g4status ]
 
 su2020.gen_g4_pbi          : [ generate, genCounter, g4run, protonBunchIntensity ]
 
-su2020.gen_g4_detFilter    : [ generate, genCounter, g4run, protonBunchIntensity, filterStepPointMomentum ]
+su2020.gen_g4_pbi_detFilter: [ generate, genCounter, g4run, protonBunchIntensity, filterStepPointMomentum ]
 
-# su2020.gen_g4_pbi_time_map : [ @sequence::su2020.gen_g4_pbi, @sequence::CommonMC.DigiSim ]
+su2020.pbi_ewm             : [ protonBunchIntensity, EWMProducer ]
 
 su2020.digis               : [ @sequence::TrackerMC.DigiSim, StrawDigiMCFilter, 
 			       @sequence::CaloDigiMC.DigiSim, 
-			       @sequence::CrvDAQPackage.CrvDAQSequence, 
-			       compressDigiMCs 
+			       @sequence::CrvDAQPackage.CrvDAQSequence 
+			       # compressDigiMCs 
 			      ]
 
 su2020.digis_no_filter     : [ @sequence::TrackerMC.DigiSim, 
 			       # StrawDigiMCFilter, 
 			       @sequence::CaloDigiMC.DigiSim, 
-			       @sequence::CrvDAQPackage.CrvDAQSequence, 
-			       compressDigiMCs 
+			       @sequence::CrvDAQPackage.CrvDAQSequence
+			       # compressDigiMCs 
 			      ]
 
 su2020.digisCaloFilter     : [ @sequence::CaloDigiMC.DigiSim, CaloShowerSimFilter,
 			       @sequence::TrackerMC.DigiSim, 
-			       @sequence::CrvDAQPackage.CrvDAQSequence, 
-			       compressDigiMCs 
+			       @sequence::CrvDAQPackage.CrvDAQSequence 
+			       # compressDigiMCs 
 			      ]
 
 # calorimeter reconstruction
-su2020.calo_reco            : [ CaloRecoDigiFromDigi ,CaloCrystalHitFromHit, 
-				 CaloProtoClusterFromCrystalHit, CaloClusterFromProtoCluster ]
+su2020.calo_hit_reco        : [ CaloRecoDigiFromDigi ,CaloCrystalHitFromHit ]
+
+su2020.calo_cluster_reco    : [ CaloProtoClusterFromCrystalHit, CaloClusterFromProtoCluster ]
+
+su2020.calo_reco            : [ @sequence::su2020.calo_hit_reco,
+				@sequence::su2020.calo_cluster_reco ]
 
 # track hit reconstruction
 su2020.trk_hit_reco         : [ makeSH, makePH, FlagBkgHits]
@@ -320,13 +337,18 @@ su2020.trk_reco_sep  : [ @sequence::Reconstruction.DeSequence,
 			 @sequence::Reconstruction.UmuSequence
 		       ]
 
-# MC compression at the end of reco
-su2020.reco_compression : [ protonBunchIntensity, # for signal-only
-			    FindMCPrimary,        # find the primary particle
+# MC compression at the end of reco, assume the pulse punch intensity to be present
+su2020.reco_compression : [ FindMCPrimary,        # find the primary particle
 			    SelectRecoMC,         # identify the MC information we want to keep
 			    compressRecoMCs       # compress
 			  ]
 
+# trigger paths considered, include into digi datasets
+su2020.triggers         : [
+			   tprSeedDeM_trigger    , cprSeedDeM_trigger    , tprSeedDeP_trigger    , cprSeedDeP_trigger    , 
+			   cprLowPSeedDeM_trigger, cprLowPSeedDeP_trigger, tprLowPSeedDeM_trigger, tprLowPSeedDeP_trigger, 
+			   tprHelixIPADeM_trigger
+			  ]
 #------------------------------------------------------------------------------
 # SU2020 paths
 #------------------------------------------------------------------------------
@@ -347,28 +369,40 @@ su2020.reco_compression : [ protonBunchIntensity, # for signal-only
 	su2020_p1 : [ @sequence::su2020.gen_g4_pbi,           # includes protonBunchIntensity
 		      GammaFilter,                            # does nothing by default
 		      @sequence::CommonMC.DigiSim      ,      # adds TimeMaps, EWMProducer (name - confusing)
-		      @sequence::su2020.digis          
+		      @sequence::su2020.digis          ,
+		      compressDigiMCs
 		     ]
 
 	# same as su2020_p1, but using a calo filter instead of straw digi filter
 	su2020_p1calo : [ @sequence::su2020.gen_g4_pbi     , 
 			  GammaFilter                      ,  # does nothing by default
 			  @sequence::CommonMC.DigiSim      ,  # TimeMaps, EWMProducer
-			  @sequence::su2020.digisCaloFilter           
+			  @sequence::su2020.digisCaloFilter,
+			  compressDigiMCs
+
 			 ]
 
 	su2020_p10 : [ @sequence::su2020.gen_g4_pbi,          # includes ProtonBunchIntensity
 		       filterStepPointMomentum ,
 		       GammaFilter,                           # does nothing by default
 		       @sequence::CommonMC.DigiSim       ,    # adds TimeMaps, EWMProducer (name - confusing)
-		       @sequence::su2020.digis_no_filter      # no StrawDigiMCFilter, for mixing
+		       @sequence::su2020.digis_no_filter ,    # no StrawDigiMCFilter, for mixing
+		       compressDigiMCs
 		      ]
 
 	su2020_p11 : [ g4run, protonBunchIntensity,           # what's left of @sequence::su2020.gen_g4_time_map,
 		       @sequence::CommonMC.DigiSim, 
-		       GammaFilter,                           # does nothing by default
-		       @sequence::su2020.digis          
+		       GammaFilter                ,           # does nothing by default
+		       @sequence::su2020.digis    ,
+		       compressDigiMCs
 		     ]
+
+	su2020_p111 : [ @sequence::su2020.pbi_ewm   ,          # what's left of @sequence::su2020.gen_g4_time_map,
+			@sequence::CommonMC.TimeMaps, 
+			GammaFilter                 ,          # does nothing by default
+			@sequence::su2020.digis_no_filter,
+			compressDigiMCs
+		       ]
 
 	su2020_p12 : [ @sequence::su2020.gen_g4_pbi,          # includes ProtonBunchIntensity
 		       filterStepPointMomentum,               # 
@@ -428,6 +462,40 @@ su2020.reco_compression : [ protonBunchIntensity, # for signal-only
 #------------------------------------------------------------------------------
 	su2020_p100 : [ ]
     }
+#------------------------------------------------------------------------------
+# introduce blind time - start of digitization
+#------------------------------------------------------------------------------
+services.DbService.verbose                                   : 0
+services.ProditionsService.strawElectronics.useDb            : false
+services.ProditionsService.strawElectronics.verbose          : 0
+
+services.ProditionsService.strawElectronics.flashEnd         : @erase
+services.ProditionsService.strawElectronics.flashEnd         : @local::BLIND_TIME
+
+physics.producers.makeSH.minimumTime                         : @erase
+physics.producers.makeSH.minimumTime                         : @local::BLIND_TIME
+
+physics.producers.CaloShowerStepROFromShowerStep.blindTime   : @erase
+physics.producers.CaloShowerStepROFromShowerStep.blindTime   : @local::BLIND_TIME
+
+physics.producers.CaloDigiFromShower.blindTime               : @erase 
+physics.producers.CaloDigiFromShower.blindTime               : @local::BLIND_TIME
+
+physics.producers.CaloProtoClusterFromCrystalHit.timeCut     : @erase
+physics.producers.CaloProtoClusterFromCrystalHit.timeCut     : @local::BLIND_TIME
+
+physics.producers.TimeClusterFindere.tmin                    : @erase
+physics.producers.TimeClusterFindere.tmin                    : @local::BLIND_TIME
+# 
+physics.filters.CalTimePeakFinder.minClusterTime             : @erase
+physics.filters.CalTimePeakFinder.minClusterTime             : @local::BLIND_TIME
+# 
+physics.producers.DeltaFinder.minimumTime                    : @erase
+physics.producers.DeltaFinder.minimumTime                    : @local::BLIND_TIME
+# 
+physics.filters.CalHelixFinderDe.HelixFinderAlg.minimumTime : @erase
+physics.filters.CalHelixFinderDe.HelixFinderAlg.minimumTime : @local::BLIND_TIME
+
 #------------------------------------------------------------------------------
 # common patches to offline modules (inherited from JobConfig)
 #------------------------------------------------------------------------------

@@ -69,6 +69,8 @@ namespace mu2e {
           };
 
       fhicl::Atom<int> verbosityLevel{ Name("verbosityLevel"), Comment("Levels 0, 1, and 11 increase the number of printouts.."), 0 };
+
+      fhicl::Atom<long int> seed{ Name("seed"), Comment("starting seed, default: from SeedService"), art::ServiceHandle<SeedService>()->getSeed() };
     };
 
     using Parameters = art::EDProducer::Table<Config>;
@@ -78,6 +80,7 @@ namespace mu2e {
     virtual void produce (art::Event& e) override;
 
   private:
+    long int seed_;
     art::RandomNumberGenerator::base_engine_t& engine_;
     ProtonPulseRandPDF::Config protonPulseConf_;
     int  verbosityLevel_;
@@ -97,7 +100,9 @@ namespace mu2e {
   //================================================================
   GenerateProtonTimes::GenerateProtonTimes(const Parameters& conf)
     : EDProducer{conf}
-    , engine_(createEngine(art::ServiceHandle<SeedService>()->getSeed()) )
+    , seed_(conf().seed())
+    //    , engine_(createEngine(art::ServiceHandle<SeedService>()->getSeed()) )
+    , engine_(createEngine(seed_))
     , verbosityLevel_(conf().verbosityLevel())
     , fixedTime_(conf().FixedModule())
   {
@@ -129,6 +134,7 @@ namespace mu2e {
     protonPulse_.reset( new ProtonPulseRandPDF( engine_, protonPulseConf_ ) );
 
     if(verbosityLevel_ > 0) {
+      std::cout << " GenerateProtonTimes:" << this->moduleDescription().moduleLabel() << ": Starting Seed: " << seed_ << std::endl;
       if(applyToGenIds_.empty()) {
         mf::LogInfo("Info")<<"pulseType = "<<protonPulse_->pulseType() <<", ignoring genIds [ "<< listStream( ignoredGenIds_ ) <<" ]\n";
       }

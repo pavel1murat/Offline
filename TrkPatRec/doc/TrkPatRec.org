@@ -1,0 +1,6 @@
+#
+
+* TrkCalolHit 
+
+  coordinate error: file:../fcl/prolog.fcl::caloHitError  : default: 15 mm
+  timing     error: file:../fcl/prolog.fcl::CaloTimeErr   : default: 0.5 ns

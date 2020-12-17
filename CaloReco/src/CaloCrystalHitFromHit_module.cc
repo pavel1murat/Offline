@@ -1,8 +1,24 @@
+// New patch to include noise and DAQ jitter effects in time resolution
+// 1 batch in 2024-2025: 
+// 200 keV electronics, 455 keV RIN+Dark, 200 ps DAQ JITTER
+// set aCorr=6.745 bCorr=0.204
+// 2 batches in 2025: 
+// 200 keV electronics noise, 600 keV RIN+Dark noise, 200 ps DAQ JITTER
+// set aCorr=8.075 bCorr=0.209
+// Noise levels are from doc-db 35519
+// DAQ jitter is from doc-db 35392 assuming ~7 DTCs in chain to include also the tracker (no DAQ jitter in the tracker at the moment)
+// Crystal time resolution as function of noise levels is from Bertrand (doc-db in preparation)
+// NOTE: by default the correction is switched OFF (aCorr=bCorr=0)
+
 #include "art/Framework/Core/EDProducer.h"
 #include "art/Framework/Core/ModuleMacros.h"
 #include "art/Framework/Principal/Event.h"
 #include "art_root_io/TFileService.h"
 #include "art_root_io/TFileDirectory.h"
+
+#include "SeedService/inc/SeedService.hh"
+#include "art/Framework/Services/Optional/RandomNumberGenerator.h"
+#include "CLHEP/Random/RandGaussQ.h"
 
 #include "CalorimeterGeom/inc/Calorimeter.hh"
 #include "GeometryService/inc/GeomHandle.hh"
@@ -17,7 +33,6 @@
 #include <cmath>
 
 
-
 namespace mu2e {
 
 
@@ -27,8 +42,12 @@ namespace mu2e {
     explicit CaloCrystalHitFromHit(fhicl::ParameterSet const& pset) :
       art::EDProducer{pset},
       caloDigisToken_{consumes<CaloRecoDigiCollection>(pset.get<std::string>("caloDigisModuleLabel"))},
-      time4Merge_          (pset.get<double>     ("time4Merge")),
-      diagLevel_           (pset.get<int>        ("diagLevel",0))
+      time4Merge_        (pset.get<double>     ("time4Merge")),
+      aCorr_             (pset.get<double>     ("aCorr")),
+      bCorr_             (pset.get<double>     ("bCorr")),
+      diagLevel_         (pset.get<int>        ("diagLevel")),
+      engine_            (createEngine(art::ServiceHandle<SeedService>()->getSeed())),
+      randGauss_         (engine_)
     {
       produces<CaloCrystalHitCollection>();
     }
@@ -42,7 +61,11 @@ namespace mu2e {
 
     art::ProductToken<CaloRecoDigiCollection> const caloDigisToken_;
     double      time4Merge_;
+    double      aCorr_;
+    double      bCorr_;
     int         diagLevel_;
+    CLHEP::HepRandomEngine& engine_;
+    CLHEP::RandGaussQ       randGauss_;
 
     std::vector<std::vector<const CaloRecoDigi*>> hitMap_;  //cached, expensive to create
 
@@ -139,6 +162,9 @@ namespace mu2e {
                 //double time = timeW/timeWtot;
                 //double timeErr = 1.0/sqrt(timeWtot);
                 double time = timeW/nRoid;
+		// PATCH TO SIMULATE NOISE CONTRIBUTION AND DAQ JITTER (for 7 DTCs considering also the tracker)
+		double sigmatcorr=sqrt(aCorr_*aCorr_/eDepTot/eDepTot*nRoid*nRoid+bCorr_*bCorr_);
+		time += randGauss_.fire(0.0,sigmatcorr);
                 double timeErr = 0;
 
                 fillBuffer(crystalId, nRoid, time, timeErr, eDepTot/nRoid, eDepTotErr/nRoid, buffer, caloHits);
@@ -178,6 +204,9 @@ namespace mu2e {
         //double timeErr = 1.0/sqrt(timeWtot);
         double time = timeW/nRoid;
         double timeErr = 0;
+	// PATCH TO SIMULATE NOISE CONTRIBUTION AND DAQ JITTER (for 7 DTCs considering also the tracker)
+	double sigmatcorr=sqrt(aCorr_*aCorr_/eDepTot/eDepTot*nRoid*nRoid+bCorr_*bCorr_);
+	time += randGauss_.fire(0.0,sigmatcorr);
 
         fillBuffer(crystalId, nRoid, time, timeErr, eDepTot/nRoid, eDepTotErr/nRoid, buffer, caloHits);
       }
