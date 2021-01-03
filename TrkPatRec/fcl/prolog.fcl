@@ -157,6 +157,8 @@ RobustHelixFinder : {
 	mcTruth                                 : 0
     }
     T0Calculator : @local::TimeCalculator
+
+    RPullScaleF : 1. 
 }
 RobustHelixFinderDe : {
   @table::RobustHelixFinder
