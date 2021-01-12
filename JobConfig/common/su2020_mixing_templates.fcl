@@ -222,6 +222,13 @@ Primary: {
     filters : {
 	g4status: { @table::g4status } 
 
+	# filter gen particle by mom -- default is no filtering
+	genFilter : { module_type : GenParticleMomFilter
+	    genParticleModule : generate
+	    MomentumCutoff : -1
+	    CutoffGenId : @local::GEN_ID
+	}
+
 	# digi filtering for Primary selection.
 	StrawDigiMCFilter : { @table::StrawDigiMCFilter }              # Filters/fcl/prolog.fcl
 
@@ -245,7 +252,7 @@ Primary: {
     EndPath  : [ genCountLogger, digiCompressionCheck, Output ]
 }
 
-Primary.GenAndG4    : [ generate, genCounter, g4run, g4status ]
+Primary.GenAndG4    : [ generate, genCounter, genFilter, g4run, g4status ]
 
 # must define this outside the brackets due to internal dependence
 Primary.TriggerPath : [ @sequence::Primary.GenAndG4,

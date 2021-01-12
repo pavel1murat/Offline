@@ -190,29 +190,32 @@ su2020 : {
 # output event formats
 # 1. event format for mixing input
 #------------------------------------------------------------------------------
-su2020.gen_sim_output       : [ "drop    *_*_*_*",
-				"keep    mu2e::GenEventCount_*_*_*",
-				"keep    *_g4run_*_*",
-				"drop    mu2e::StepPointMCs_g4run_calorimeter_*",
+su2020.gen_sim_output       : [ "drop    *_*_*_*"                                 ,
+				"keep    mu2e::EventWeight_*_*_*"                 ,
+				"keep    mu2e::EventWindowMarker_EWMProducer_*_*" ,
+				"keep    mu2e::FixedTimeMap_*_*_*"                ,
+				"keep    mu2e::GenEventCount_*_*_*"               ,
+				"keep    mu2e::GenParticles_*_*_*"                ,
+				"keep    *_g4run_*_*"                             ,
+				"drop    mu2e::StepPointMCs_g4run_calorimeter_*"  ,
 				"drop    mu2e::StepPointMCs_g4run_calorimeterRO_*",
-				"keep    mu2e::CaloShowerSteps_*_*_*",
-				"keep    mu2e::GenParticles_*_*_*"
+				"keep    mu2e::CaloShowerSteps_*_*_*"
 			       ]
 #------------------------------------------------------------------------------
 # 2. output format for digi files
 #------------------------------------------------------------------------------
-su2020.gen_sim_digi_output  : [ "drop    *_*_*_*",
-				"keep    *_compressDigiMCs_*_*",
-				"keep    mu2e::GenEventCount_*_*_*",
-				"keep    mu2e::GenParticles_generate_photon_*",
-				"keep    mu2e::StatusG4_g4run_*_*",
-				"keep    mu2e::EventWeight_*_*_*",
+su2020.gen_sim_digi_output  : [ "drop    *_*_*_*"                                ,
+				"keep    *_compressDigiMCs_*_*"                  ,
+				"keep    mu2e::GenEventCount_*_*_*"              ,
+				"keep    mu2e::GenParticles_generate_photon_*"   ,
+				"keep    mu2e::StatusG4_g4run_*_*"               ,
+				"keep    mu2e::EventWeight_*_*_*"                ,
 				"keep    mu2e::EventWindowMarker_EWMProducer_*_*",
-				"keep    mu2e::FixedTimeMap_*_*_*",
-				"keep    mu2e::CaloDigis_CaloDigiFromShower_*_*",
-				"keep    mu2e::CrvDigis_CrvDigi_*_*",
-				"keep    mu2e::ProtonBunchIntensity_*_*_*",
-				"keep    mu2e::StrawDigis_makeSD_*_*",
+				"keep    mu2e::FixedTimeMap_*_*_*"               ,
+				"keep    mu2e::CaloDigis_CaloDigiFromShower_*_*" ,
+				"keep    mu2e::CrvDigis_CrvDigi_*_*"             ,
+				"keep    mu2e::ProtonBunchIntensity_*_*_*"       ,
+				"keep    mu2e::StrawDigis_makeSD_*_*"            ,
 				"keep    art::TriggerResults_TriggerResults_*_*"
 			       ]
 #------------------------------------------------------------------------------
@@ -220,7 +223,9 @@ su2020.gen_sim_digi_output  : [ "drop    *_*_*_*",
 #------------------------------------------------------------------------------
 su2020.mixing_output : [ "drop *_*_*_*"                               ,
 			 "keep *_compressDigiMCs_*_*"                 ,
-			 "keep mu2e::EventWeight_*_*_*",
+			 "keep mu2e::GenEventCount_*_*_*"             ,
+			 "keep mu2e::GenParticles_generate_photon_*"  ,
+			 "keep mu2e::EventWeight_*_*_*"               ,
 			 "keep mu2e::EventWindowMarker_*_*_*"         ,
 			 "keep mu2e::ProtonBunchIntensity_*_*_*"      ,
 			 "keep mu2e::StrawDigis_*_*_*"                ,
@@ -232,11 +237,8 @@ su2020.mixing_output : [ "drop *_*_*_*"                               ,
 su2020.outputs: {
     defaultOutput : { module_type : RootOutput
 	SelectEvents  : [ @sequence::TRIGGER_PATHS ]
-	outputCommands: [ "keep *_*_*_*" 
-			  # (example)		      , "drop uintmu2e::PhysicalVolumeInfomvstd::pairs_g4run_*_*"
-			 ]
+	outputCommands: [ "keep *_*_*_*" ]
     }
-    
     FullOutput : { @table::Mixing.Output  outputCommands : [ "keep *_*_*_*"                  ] }
     DetOutput  : { @table::Mixing.Output  outputCommands : [ @sequence::su2020.mixing_output ] }
 }
@@ -302,6 +304,14 @@ su2020.trk_reco_de  : [
 		       KFFDeMHPar, KFFDeMHDar                                  # final Kalman filter fit with the Panel-based AR
 		      ]
 
+su2020.trk_reco_de_dar : [
+		       TimeClusterFinderDe, HelixFinderDe,                     # TrkPatRec
+		       CalTimePeakFinder, DeltaFinder, CalHelixFinderDe,       # CalPatRec
+		       MHFinderDe,                                             # helix merging
+		       KSFDeMH,                                                # Seed fit (chisquared, no drift)
+		       KFFDeMHDar                                              # final Kalman filter, DAR-only
+		      ]
+
 # downstream muon reconstruction: mu- and mi+ combined
 su2020.trk_reco_dmu : [
 		       TimeClusterFinderDmu, HelixFinderDmu,                   # TrkPatRec
@@ -309,6 +319,14 @@ su2020.trk_reco_dmu : [
 		       MHFinderDmu,                                            # helix merging
 		       KSFDmuMH,                                               # Seed fit (chisquared, no drift)
 		       KFFDmuMHPar, KFFDmuMHDar                                # final Kalman filter fit with the panel-based AR
+		      ]
+
+su2020.trk_reco_dmu_dar : [
+		       TimeClusterFinderDmu, HelixFinderDmu,                   # TrkPatRec
+		       CalTimePeakFinderMu, DeltaFinderMu, CalHelixFinderDmu,  # CalPatRec
+		       MHFinderDmu,                                            # helix merging
+		       KSFDmuMH,                                               # Seed fit (chisquared, no drift)
+		       KFFDmuMHDar                                             # final Kalman filter fit, DAR-only
 		      ]
 
 # upstream electron reconstruction (e- and e+): standalone-only pattern recognition, 

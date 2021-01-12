@@ -6,7 +6,7 @@
 //  $Date: 2013/10/21 20:44:04 $
 //
 // Original author Robert Bernstein
-// Added 
+//
 
 #include "CLHEP/Units/SystemOfUnits.h"
 #include "ConditionsService/inc/ConditionsHandle.hh"
@@ -58,7 +58,8 @@ namespace mu2e {
       _ntAntiProtonSteps(0),
       _generatorModuleLabel(pset.get<std::string>("generatorModuleLabel", "generate")),
       _g4ModuleLabel(pset.get<std::string>("g4ModuleLabel", "g4run")),
-      _diagLevel(pset.get<int>("diagLevel",0))
+      _diagLevel(pset.get<int>("diagLevel",0)),
+      _stage(pset.get<int>("stage",0))
     {
 
       Vint const & pdg_ids = pset.get<Vint>("savePDG", Vint());
@@ -106,6 +107,8 @@ namespace mu2e {
     std::string _g4ModuleLabel;
 
     int _diagLevel;
+
+    int _stage;
   };
 
   void ReadAntiProtonSteps::beginJob(){
@@ -115,7 +118,7 @@ namespace mu2e {
     art::ServiceHandle<art::TFileService> tfs;
 
     _ntAntiProtonSteps = tfs->make<TNtuple>( "ntpbars", "AntiProtonSteps ntuple",
-					     "run:evt:trk:pdg:time:x:y:z:gtime:xsecInitialPbarCosTheta:mu2eInitialPbarCosTheta:momentum:initialProtonMomentum:currentKE:px:py:pz");
+					     "run:evt:trk:pdg:time:ptime:protonEndPx:protonEndPy:protonEndPz:initialX:initialY:initialZ:initialPx:initialPy:initialPz:xsecInitialCosTheta:mu2eInitialCosTheta:endX_s1:endY_s1:endZ_s1:endPx_s1:endPy_s1:endPz_s1:endX_s2:endY_s2:endZ_s2:endPx_s2:endPy_s2:endPz_s2:endX_s3:endY_s3:endZ_s3:endPx_s3:endPy_s3:endPz_s3:endX_s4:endY_s4:endZ_s4:endPx_s4:endPy_s4:endPz_s4:posZ_VD");
   }
 
   void ReadAntiProtonSteps::beginRun(art::Run const& run){
@@ -139,13 +142,17 @@ namespace mu2e {
     art::Handle<SimParticleCollection> simParticles;
     event.getByLabel(_g4ModuleLabel, simParticles);
     bool haveSimPart = simParticles.isValid();
+    const SimParticleCollection& simParticlesColl(*simParticles);
     if ( haveSimPart ) haveSimPart = !(simParticles->empty());
+    std::string tag = simParticles.provenance()->productDescription().branchName();
+
 
     art::Handle<GenParticleCollection> genParticleHandle;
     event.getByLabel(_generatorModuleLabel, genParticleHandle);
     bool haveGenPart = genParticleHandle.isValid();
     GenParticleCollection const& genParticles(*genParticleHandle);
     if ( haveGenPart ) haveGenPart = !(genParticles.empty());
+
     CLHEP::HepLorentzVector initialProtonFourMomentum(0.,0.,0.,0.);
     //
     // look at the genParticles and see that the geantino with the initial proton is still there.
@@ -169,14 +176,15 @@ namespace mu2e {
 	  }
       } 
 
+ 
     if (_diagLevel > 1){
       std::cout << "about to print size of hits" << std::endl;
       std::cout << " size of hits " << hits.isValid() << " " << hits->size()  << std::endl;
     }
 
     // Loop over all hits.
-          if( hits.isValid() )
-    //    if (hits.isValid() && hits->size() ==1) 
+    if( hits.isValid() )
+      //    if (hits.isValid() && hits->size() ==1) 
       {
 	for ( size_t i=0; i< hits->size(); ++i ){ 
 	  // Alias, used for readability.
@@ -184,20 +192,39 @@ namespace mu2e {
 
 	  // Get the hit information.
 	  const CLHEP::Hep3Vector& pos = hit.position();
-	  const CLHEP::Hep3Vector& mom = hit.momentum();
+	  //const CLHEP::Hep3Vector& mom = hit.momentum();
+	  CLHEP::HepLorentzVector startPbarFourMomentum(0.,0.,0.,0.);
+	  CLHEP::HepLorentzVector endProtonFourMomentum(0.,0.,0.,0.);
 
 	  // Get track info
 	  key_type trackId = hit.trackId();
 	  int pdgId = 0;
 	  bool goodPDG = false;
-	  CLHEP::HepLorentzVector startingFourMomentum(0.,0.,0.,0.);
-	  CLHEP::Hep3Vector startingPosition(0.,0.,0.);
-	  double currentKE(0.);
+
+
+	  //CLHEP::HepLorentzVector startingFourMomentum(0.,0.,0.,0.);
+	  //CLHEP::Hep3Vector startingPosition(0.,0.,0.);
+
+	  //double currentKE(0.);
+
+
+
+	  //print of all information of the SimParticleCollection
+	  if (_diagLevel > 1)
+	    {
+	      std::cout<< "Next collection from "<< tag << std::endl;
+	      std::cout << "SimParticleCollection has " << simParticlesColl.size() << " particles\n" << std::endl;  //works
+	    }
+   
+
+
 	  if ( haveSimPart ){
 	    if( !simParticles->has(trackId) ) {
 	      pdgId = 0;
 	    } else {
 	      SimParticle const& sim = simParticles->at(trackId);
+	      //SimParticle prot =  simParticles->at(trackId); 
+	      //SimParticle* prot = &prot_temp;
 	      pdgId = sim.pdgId();
 	      for (auto iPDG : pdg_save)        //look only at antiprotons
 		{
@@ -210,24 +237,19 @@ namespace mu2e {
 		      //
 		      // what was the starting momentum and direction of the track?  
 		      // just use angle wrt z as a close-enough estimate
-		      auto originalParticle = sim.originParticle();
-		      startingFourMomentum = originalParticle.startMomentum();
-		      startingPosition     = originalParticle.startPosition();
-		      currentKE = sqrt( mom.mag()*mom.mag() + pbarMass2) - pbarMass;
-		      //initialProtonFourMomentum = (sim.parent())->endMomentum();
-		      if (_diagLevel > 0)
+		      //auto originalParticle = sim.originParticle();
+		      //startingFourMomentum = originalParticle.startMomentum();
+		      //startingPosition     = originalParticle.startPosition();
+		      //currentKE = sqrt( mom.mag()*mom.mag() + pbarMass2) - pbarMass;
+		      //while (prot.hasParent()) {prot = prot.parent();}
+		      
+		      if (_diagLevel > 1)
 			{
-			  std::cout << "\n inside hit number: " << i << std::endl;
-			  std::cout << "\n sim.parent().pdgId: " << (sim.parent())->pdgId() << std::endl;
-		  
-			  std::cout << "starting momentum = " << startingFourMomentum << std::endl;
-			  std::cout << "starting cos theta = " << startingFourMomentum.cosTheta() << std::endl;
-			  std::cout << "starting position = " << startingPosition << std::endl;
-
 			  std::cout << "_nAnalyzed, pdg, propertime, time, volume " << _nAnalyzed << " " << pdgId << " " << hit.properTime() << " " << hit.time() << " " << hit.volumeId() <<"\n"
 				    << std::setprecision(15) << " position" <<   " " << pos.x() << " " << pos.y() << " " << pos.z() 
-				    << " \n current KE " << currentKE << std::endl;
+				    << std::endl;
 			}
+		      
 		  
 		    }
 		}
@@ -236,50 +258,121 @@ namespace mu2e {
 
 	  if (goodPDG)//hack to get rid of genParticles
 	    {
-	  
-	      // Fill the ntuple.
+
 	      nt[0]  = event.id().run();
 	      nt[1]  = event.id().event();
 	      nt[2]  = trackId.asInt();
 	      nt[3]  = pdgId;
 	      nt[4]  = hit.time();
-	      nt[5]  = pos.x();
-	      nt[6]  = pos.y();
-	      nt[7]  = pos.z();
-	      nt[8] = hit.properTime();
-	      //	      nt[9] = startingFourMomentum.cosTheta();
-	      // 
-	      // get angle of initial proton to pbar; convert from HepDouble whatever that is
-	      nt[9] =    (initialProtonFourMomentum.vect().dot(startingFourMomentum.vect()))
-		/(initialProtonFourMomentum.vect().mag()*startingFourMomentum.vect().mag());
-	      nt[10] = startingFourMomentum.cosTheta();
-	      nt[11] = startingFourMomentum.vect().mag(); 
-	      nt[12] = initialProtonFourMomentum.vect().mag();
-	      nt[13] = currentKE;
-	      nt[14] = mom.x();
-	      nt[15] = mom.y();
-	      nt[16] = mom.z();
+	      nt[5]  = hit.properTime();
 
-	      if (_diagLevel > 0)
-		{
+	      //to read various VD
+	      nt[41] = pos.z();
+
 	      
-		  std::cout << " \n filling ntuple" << std::endl;
-		  std::cout << "_nAnalyzed, pdg, time, volume " << _nAnalyzed << " " << pdgId << " " << hit.time()  << " " << hit.volumeId() << "\n" 
-			    << std::setprecision(15) << " position" <<   " " << pos.x() << " " << pos.y() << " " << pos.z() 
-			    << " \n current KE " << currentKE << "\n  momentum vector = " << mom << std::endl;
+
+	      int flag{0};
+	      for (const auto& iSim: simParticlesColl){
+		//parent of the simParticle
+		art::Ptr<SimParticle> const& pptr = iSim.second.parent();
+		int pkey = -1;
+		if (pptr) pkey = int(pptr.key());
+		int mykey = iSim.first.asUint();
+
+		if (pkey == -1 && iSim.second.stoppingCode().name() == "protonInelastic" && iSim.second.pdgId() == 2212){
+		  endProtonFourMomentum = iSim.second.endMomentum();
+		  nt[6] = endProtonFourMomentum.vect().x();   //components for proton
+		  nt[7] = endProtonFourMomentum.vect().y();
+		  nt[8] = endProtonFourMomentum.vect().z();
 		}
+
+		if (pkey == 1 && iSim.second.stoppingCode().name() == "mu2eProtonInelastic"  && iSim.second.pdgId() == -2212){
+		  startPbarFourMomentum = iSim.second.startMomentum();
+		  nt[9]  = iSim.second.startPosition().x();   //position of generated pbar
+		  nt[10] = iSim.second.startPosition().y();
+		  nt[11] = iSim.second.startPosition().z();
+		  nt[12] = startPbarFourMomentum.vect().x();   //momentum components for generated pbar
+		  nt[13] = startPbarFourMomentum.vect().y();
+		  nt[14] = startPbarFourMomentum.vect().z();
+		  //nt[12] = startingFourMomentum.vect().x();   
+		  //nt[13] = startingFourMomentum.vect().y();
+		  //nt[14] = startingFourMomentum.vect().z();
+		  //wrt proton direction at the end
+		  nt[15] = (endProtonFourMomentum.vect().dot(startPbarFourMomentum.vect()))	/   (endProtonFourMomentum.vect().mag()*startPbarFourMomentum.vect().mag());
+		  //wrt mu2e z
+		  nt[16] = startPbarFourMomentum.cosTheta();
+		}
+		//end s1
+		if ((mykey>100000 && mykey<200000) && _stage>=1 && iSim.second.stoppingCode().name() == "mu2eKillerVolume"  && iSim.second.pdgId() == pdgId && iSim.second.endVolumeIndex() == 14846){
+		  nt[17] = iSim.second.endPosition().x();
+		  nt[18] = iSim.second.endPosition().y();
+		  nt[19] = iSim.second.endPosition().z();
+		  nt[20] = iSim.second.endMomentum().vect().x();
+		  nt[21] = iSim.second.endMomentum().vect().y();
+		  nt[22] = iSim.second.endMomentum().vect().z();
+		}
+		//end s2
+		if ((mykey>200000 && mykey<300000) && _stage>=2 && iSim.second.stoppingCode().name() == "mu2eKillerVolume"  && iSim.second.pdgId() == pdgId){
+		  nt[23] = iSim.second.endPosition().x();
+		  nt[24] = iSim.second.endPosition().y();
+		  nt[25] = iSim.second.endPosition().z();
+		  nt[26] = iSim.second.endMomentum().vect().x();
+		  nt[27] = iSim.second.endMomentum().vect().y();
+		  nt[28] = iSim.second.endMomentum().vect().z();
+		}
+		//end s3
+		if ((mykey>300000 && mykey<400000) && _stage>=3 && iSim.second.stoppingCode().name() == "mu2eKillerVolume"  && iSim.second.pdgId() == pdgId){
+		  nt[29] = iSim.second.endPosition().x();
+		  nt[30] = iSim.second.endPosition().y();
+		  nt[31] = iSim.second.endPosition().z();
+		  nt[32] = iSim.second.endMomentum().vect().x();
+		  nt[33] = iSim.second.endMomentum().vect().y();
+		  nt[34] = iSim.second.endMomentum().vect().z();
+		}
+		//end s4
+		if ((mykey>400000 && mykey<500000) && _stage>=4 && iSim.second.stoppingCode().name() == "hFritiofCaptureAtRest"  && iSim.second.pdgId() == pdgId){
+		  nt[35] = iSim.second.endPosition().x();
+		  nt[36] = iSim.second.endPosition().y();
+		  nt[37] = iSim.second.endPosition().z();
+		  nt[38] = iSim.second.endMomentum().vect().x();
+		  nt[39] = iSim.second.endMomentum().vect().y();
+		  nt[40] = iSim.second.endMomentum().vect().z();
+		}
+
+		if(_diagLevel > 0 && (startPbarFourMomentum.cosTheta()<=-0.8 && startPbarFourMomentum.vect().mag()>=3000. && flag ==0)) {
+		  std::cout << "key      parent    pdgId       Start  Position                  Start P               CosTheta              EndPosition                End P                  vol   process\n" << std::endl;
+		  flag =1;
+		}
+
+		if(_diagLevel > 0 && (startPbarFourMomentum.cosTheta()<=-0.8 && startPbarFourMomentum.vect().mag()>=3000.)) {
+		  std::cout 
+		    << " " << std::setw(7) << mykey
+		    << " " << std::setw(7) << pkey
+		    << " " << std::setw(8) << iSim.second.pdgId()
+		    << " | " << std::setw(8)  << std::setprecision(5) << iSim.second.startPosition().x()
+		    << " " << std::setw(8)  << std::setprecision(5) << iSim.second.startPosition().y()
+		    << " " << std::setw(8)  << std::setprecision(5) << iSim.second.startPosition().z()
+		    << " | " << std::setw(9) << std::setprecision(5) << iSim.second.startMomentum().vect().x()
+		    << " " << std::setw(9) << std::setprecision(5) << iSim.second.startMomentum().vect().y()
+		    << " " << std::setw(9) << std::setprecision(5) << iSim.second.startMomentum().vect().z()
+		    << " | " << std::setw(9) << std::setprecision(5) << iSim.second.startMomentum().vect().cosTheta()
+		    << "   "
+		    << " | " << std::setw(8)  << std::setprecision(5) << iSim.second.endPosition().x()
+		    << " " << std::setw(8)  << std::setprecision(5) << iSim.second.endPosition().y()
+		    << " " << std::setw(8)  << std::setprecision(5) << iSim.second.endPosition().z()
+		    << " | " << std::setw(9) << std::setprecision(5) << iSim.second.endMomentum().vect().x()
+		    << " " << std::setw(9) << std::setprecision(5) << iSim.second.endMomentum().vect().y()
+		    << " " << std::setw(9) << std::setprecision(5) << iSim.second.endMomentum().vect().z()
+		    << " | " << std::setw(6) << iSim.second.endVolumeIndex()
+		    << "  "
+		    << " " << std::setiosflags(std::ios::left) << iSim.second.stoppingCode().name() 
+		    << std::endl;
+		}
+
+	      }//end loop over simParticles
+
 	      _ntAntiProtonSteps->Fill(nt);
-	      if ( _nAnalyzed < _maxPrint){
-		cout << "VD hit: "
-		     << event.id().run()   << " | "
-		     << event.id().event() << " | "
-		     << hit.volumeId()     << " "
-		     << pdgId              << " | "
-		     << hit.time()         << " "
-		     << mom.mag()
-		     << endl;
-	      }
-	    }
+	    }//end goodPDG
 
 	} // end loop over hits.
       }

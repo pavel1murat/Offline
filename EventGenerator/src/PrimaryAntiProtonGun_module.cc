@@ -244,7 +244,7 @@ namespace mu2e {
     // for weighted generator
     // used to generate according to sqrt(efficiency)*xSection
     // the histogram is an hack to get rid of the binning effect of the TF2
-    _productionFunction= new TF2("_productionFunction","0.000001 * exp(-((x)*(5*(y+1))/1000.)) +  exp(-(17*(y+1))) * TMath::Gaus(x, 2000, 700, 1)",0.,5500.,-1.,1.);
+    _productionFunction= new TF2("_productionFunction","0.000001 * exp(-(x*5*(y+1)/1000.)) +  exp(-17*(y+1)) * TMath::Gaus(x, 2000, 700, 1)",0.,5500.,-1.,1.);
     _h2FunctionMid = new TH2D("_h2FunctionMid", "intermediate result of extraction from the function", 200, 0., 5000., 200, -1., 1.);
   }
 
