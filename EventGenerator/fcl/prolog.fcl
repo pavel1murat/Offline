@@ -38,10 +38,13 @@ mergedMuon_ootStops_mdc2018   : @local::mergedMuon_ootStops_mdc2018_1
 mergedMuon_ipaStops_mdc2018   : @local::mergedMuon_ipaStops_mdc2018_1
 
 #------------------------------------------------------------------------------
-# SU2020 stoped particle ntuples: mu-(tgt,oot) , pi-(tgt,oot), pbar
+# SU2020 stoped particle ntuples: mu-(tgt,oot), mu+(tgt,oot) , pi-(tgt,oot), pbar
 #------------------------------------------------------------------------------
 bmum0_tgtStops_su2020_1       : [ "xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/mu2e/resilient/users/mu2epro/su2020/stops/nts.mu2e.su2020.bmum0s31b0.001000_10000000.root" ]
 bmum0_ootStops_su2020_1       : [ "xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/mu2e/resilient/users/mu2epro/su2020/stops/nts.mu2e.su2020.bmum0s32b0.001000_10000000.root" ]
+
+bmup2_tgtStops_su2020_1       : [ "xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/mu2e/resilient/users/mu2epro/su2020/stops/nts.mu2e.bmup2s31b0.su2020.001000_00000000.root"]
+#bmup2_ootStops_su2020_1       : []
 
 bpim0_tgtStops_su2020_1       : [ "xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/mu2e/resilient/users/mu2epro/su2020/stops/nts.mu2e.su2020.bpim0s31b0.001000_10000000.root" ]
 bpim0_ootStops_su2020_1       : [ "xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/mu2e/resilient/users/mu2epro/su2020/stops/nts.mu2e.su2020.bpim0s32b0.001000_10000000.root" ]
@@ -80,6 +83,14 @@ mu2e.gammaStops : {
     inputFiles            : @local::mergedGamma_tgtRegionStops_su2020_1
     averageNumRecordsToUse: 1000000
     treeName              : "conversionwriter/gammaStops/conversions"
+    branchName            : "stops"
+    verbosityLevel        : 0
+}
+
+mu2e.tgtMuPlusStops : {
+    inputFiles            : @local::bmup2_tgtStops_su2020_1
+    averageNumRecordsToUse: 1000000
+    treeName              : "stopDumper/stops"
     branchName            : "stops"
     verbosityLevel        : 0
 }
@@ -179,7 +190,7 @@ randomsaver: { module_type : RandomNumberSaver }
 #------------------------------------------------------------------------------
 EventGenerator : {
     muonStops      : { @table::mu2e.tgtMuonStops
-#	inputFiles : @local::mergedMuon_tgtStops_mdc2018_1
+#	Inputfiles : @local::mergedMuon_tgtStops_mdc2018_1
 	inputFiles : [ @sequence::bmum0_tgtStops_su2020_1 ]
     } 
 
@@ -263,7 +274,8 @@ EventGenerator : { @table::EventGenerator
 		ehi                   : 92.32
 		elow                  : 0.
 	    }
-	    muonStops                 : { @table::EventGenerator.muonStops }
+#	    muonStops                 : { @table::EventGenerator.muonStops }
+                 muonStops            : {  @table::mu2e.tgtMuPlusStops }
 	    doHistograms              : true
 	}
 #------------------------------------------------------------------------------
@@ -303,6 +315,36 @@ EventGenerator : { @table::EventGenerator
 		spectrumFileName : "ConditionsService/data/czarnecki_Al.tbl"
 	    }
 	    muonStops            : {  @table::EventGenerator.muonStops }
+	}
+
+#------------------------------------------------------------------------------
+# stopped mu+ --> positrons, 50% magnetic field, default stopping target
+#------------------------------------------------------------------------------
+  	eplusGunB50 : { @table::StoppedParticleReactionGun 
+	    physics : { @table::StoppedParticleReactionGun.physics
+		pdgId            :  -11
+                elow             :  52.81349
+                ehi              :  52.81350
+		spectrumVariable :  "momentum"   # "totalEnergy"
+		spectrumShape    :  "flat"       # "tabulated"
+	    }
+	    muonStops            : {  @table::mu2e.tgtMuPlusStops }
+          doHistograms          : true
+	}
+#------------------------------------------------------------------------------
+# mu+ positrons,50%B field, Al, 1st order radiative corrected spectrum
+#------------------------------------------------------------------------------
+  	MichelPositronGun : { @table::StoppedParticleReactionGun 
+	    physics : { @table::StoppedParticleReactionGun.physics
+		pdgId            :  -11
+		spectrumVariable : "totalEnergy"
+		spectrumShape    : "tabulated"
+		spectrumFileName : "ConditionsService/data/Micheltbl.tbl"
+         #       spectrumFileName : "ConditionsService/data/Majoron.tbl"
+	    }
+#            muonStops            : {  @table::EventGenerator.muonStops }
+	    muonStops            : {  @table::mu2e.tgtMuPlusStops }
+           doHistograms          : true
 	}
 #------------------------------------------------------------------------------
 # DIO electrons, Al, leading order spectrum
