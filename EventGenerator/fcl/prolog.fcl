@@ -54,7 +54,7 @@ bpim0_ootStops_su2020_1       : [ "xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/mu2
 pbar0_tgtStops_su2020_1       : [ "xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/mu2e/resilient/users/defelice/su2020/stops/nts.mu2e.pbar0s41b0.su2020.001000_00000000.root" ]
 pbar0_tgtStops_su2020_2       : [ "xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/mu2e/resilient/users/mu2epro/su2020/stops/nts.mu2e.pbar0s41b0.su2020.001000_00000000.root" ]
 
-rpce2_tgtStops_su2020_2       : [ "xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/mu2e/resilient/users/mu2epro/su2020/stops/nts.mu2e.rpce2s31b0.su2020.001000_00000000.root" ]
+rpce2_tgtStops_su2020_1       : [ "xroot://fndca1.fnal.gov/pnfs/fnal.gov/usr/mu2e/resilient/users/mu2epro/su2020/stops/nts.mu2e.rpce2s31b0.su2020.001000_00000000.root" ]
 
 # CD3 stopped muon configs.
 mu2e.tgtMuonStops: {
