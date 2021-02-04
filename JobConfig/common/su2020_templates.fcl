@@ -157,9 +157,15 @@ su2020 : {
 
 	detectorFilter : { module_type: FilterG4Out
 	    mainHitInputs   : [ "g4run:tracker" ]
-	    mainSPPtrInputs : []
+	    mainSPPtrInputs : [ ]
 	    extraHitInputs  : [ "g4run:virtualdetector", "g4run:protonabsorber" ]
-	    vetoDaughters   : []
+	    vetoDaughters   : [ ]
+	}
+
+	crvFilter: { module_type: FilterG4Out
+	    mainHitInputs : [ "g4run:CRV" ]
+	    extraHitInputs: [ "g4run:virtualdetector" ]
+	    vetoParticles : [ ]
 	}
 
 	filterStepPointMomentum : { @table::FilterStepPointMomentum
