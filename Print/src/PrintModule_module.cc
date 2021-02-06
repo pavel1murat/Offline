@@ -26,6 +26,7 @@
 #include "Print/inc/CaloClusterPrinter.hh"
 #include "Print/inc/CrvDigiPrinter.hh"
 #include "Print/inc/CrvDigiMCPrinter.hh"
+#include "Print/inc/CrvPhotonsPrinter.hh"
 #include "Print/inc/CrvRecoPulsePrinter.hh"
 #include "Print/inc/CrvCoincidenceClusterPrinter.hh"
 #include "Print/inc/StrawDigiPrinter.hh"
@@ -84,6 +85,8 @@ namespace mu2e {
 	fhicl::Name("crvDigiPrinter") }; 
       fhicl::Table<ProductPrinter::Config> crvDigiMCPrinter { 
 	fhicl::Name("crvDigiMCPrinter") }; 
+      fhicl::Table<ProductPrinter::Config> crvPhotonsPrinter { 
+	fhicl::Name("crvPhotonsPrinter") }; 
       fhicl::Table<ProductPrinter::Config> crvRecoPulsePrinter { 
 	fhicl::Name("crvRecoPulsePrinter") }; 
       fhicl::Table<ProductPrinter::Config> crvCoincidenceClusterPrinter { 
@@ -162,6 +165,7 @@ mu2e::PrintModule::PrintModule(const Parameters& conf):
   _printers.push_back( make_unique<CaloClusterPrinter>( conf().caloClusterPrinter() ) );
   _printers.push_back( make_unique<CrvDigiPrinter>( conf().crvDigiPrinter() ) );
   _printers.push_back( make_unique<CrvDigiMCPrinter>( conf().crvDigiMCPrinter() ) );
+  _printers.push_back( make_unique<CrvPhotonsPrinter>( conf().crvPhotonsPrinter() ) );
   _printers.push_back( make_unique<CrvRecoPulsePrinter>( conf().crvRecoPulsePrinter() ) );
   _printers.push_back( make_unique<CrvCoincidenceClusterPrinter>( conf().crvCoincidenceClusterPrinter() ) );
   _printers.push_back( make_unique<StrawDigiPrinter>( conf().strawDigiPrinter() ) );

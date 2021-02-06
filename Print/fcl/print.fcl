@@ -68,6 +68,9 @@ physics :{
       crvRecoPulsePrinter : {
         verbose: 1
       }
+      crvPhotonsPrinter : {
+        verbose: 0
+      }
       crvCoincidenceClusterPrinter : {
         verbose: 1
       }
