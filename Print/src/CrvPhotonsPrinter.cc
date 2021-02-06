@@ -52,21 +52,17 @@ void mu2e::CrvPhotonsPrinter::Print(const CrvPhotonsCollection& coll, std::ostre
   PrintListHeader();
 
   for(const auto& obj: coll) {
-    int bar_index = obj.first.asInt();
-
-    os << " bar_index:" << std::setw(5) << bar_index << "\n";
-    
-    // loop over photons 
-
+    int bar = obj.first.asInt();
     for (int sipm=0; sipm<4; sipm++) {
       const std::vector<CrvPhotons::SinglePhoton>* list_of_photons =  &obj.second.GetPhotons(sipm);
       int nph = list_of_photons->size();
-      os << " sipm, nphotons" << std::setw(5) << sipm << "  " << nph << "\n";
       for (int i=0; i<nph; i++) {
 	const CrvPhotons::SinglePhoton* ph = &list_of_photons->at(i);
 	const mu2e::SimParticle* simp = ph->_step->simParticle().get();
 
-	os << "i, time, eDep, simID, pdgID : " << i << " " << ph->_time << " " << ph->_step->eDep() << " " << simp->pdgId() << "\n";
+	os << std::setw(5) << bar << "  " << std::setw(4) << sipm << std::setw(4) << nph << std::setw(4) << i 
+	   << std::setw(14) << ph->_time << std::setw(12) << ph->_step->eDep() 
+	   << std::setw(12) << simp->id() << std::setw(10)<< simp->pdgId() << "\n";
       }
     }
   }
@@ -80,7 +76,7 @@ void mu2e::CrvPhotonsPrinter::PrintHeader(const std::string& tag, std::ostream& 
 
 void mu2e::CrvPhotonsPrinter::PrintListHeader(std::ostream& os) {
   if(verbose()<1) return;
-  os << "   ind      id    time\n";
+  os << "  bar  sipm nph   i       time           eDep       simID     pdgID\n";
 
 }
 
