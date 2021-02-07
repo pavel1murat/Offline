@@ -590,7 +590,8 @@ Mixing.filters.deuteronMixerTrkCal.mu2e.meanEventsPerProton :   2.547e-7  # 1.62
 #------------------------------------------------------------------------------------------------------
 # CRV mixing                                                :   SU2020    | MDC2018    # debug
 #
-# DS and PS stream have been generated with the timing cutoff T>200ns
+# SU2020 DS and PS input streams have been generated with the timing cut-off T>200ns
+# what are the MDC2018 definitions of "cut" and "uncut" ?
 #------------------------------------------------------------------------------------------------------
 Mixing.filters.dioMixerCRV.mu2e.meanEventsPerProton         :   6.704e-7  # 3.2816E-07 # -1   # 
 Mixing.filters.neutronMixerCRV.mu2e.meanEventsPerProton     :   6.844e-6  # 3.6173E-06 # -1   # 
