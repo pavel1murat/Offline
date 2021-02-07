@@ -569,8 +569,8 @@ Mixing.minbias_nocrv        : [ @sequence::Mixing.pbi_mix_digi_nocrv  ,
 				compressDigiMCs 
 			       ]
 
-Mixing.minbias_crv          : [ @sequence::Mixing.pbi_mix_digi_crv  # ,
-				# compressDigiMCs 
+Mixing.minbias_crv          : [ @sequence::Mixing.pbi_mix_digi_crv  ,
+				compressDigiMCs 
 			       ]
 #------------------------------------------------------------------------------------------------------
 # TrkCal mixing fractions : N(mix-in events)/POT for different processes
@@ -588,14 +588,14 @@ Mixing.filters.photonMixerTrkCal.mu2e.meanEventsPerProton   :   8.231e-6  # 8.69
 Mixing.filters.protonMixerTrkCal.mu2e.meanEventsPerProton   :   6.594e-7  # 7.4322E-07 #  -24 # -7 # -1 
 Mixing.filters.deuteronMixerTrkCal.mu2e.meanEventsPerProton :   2.547e-7  # 1.6261E-07 #  -10 # -8 # -1 
 #------------------------------------------------------------------------------------------------------
-# CRV mixing                                                :   SU2020    | MDC2018    # 
+# CRV mixing                                                :   SU2020    | MDC2018    # debug
 #
 # DS and PS stream have been generated with the timing cutoff T>200ns
 #------------------------------------------------------------------------------------------------------
-Mixing.filters.dioMixerCRV.mu2e.meanEventsPerProton         :    -1 # 6.704e-7  # 3.2816E-07 #
-Mixing.filters.neutronMixerCRV.mu2e.meanEventsPerProton     :    -1 # 6.844e-6  # 3.6173E-06 #
-Mixing.filters.DSMixerCRV.mu2e.meanEventsPerProton	    :    -1 # 7.062e-5  # 1.4588E-06 #
-Mixing.filters.PSMixerCRV.mu2e.meanEventsPerProton	    :    -1 # 1.562e-4  # 4.2425E-05 #
+Mixing.filters.dioMixerCRV.mu2e.meanEventsPerProton         :   6.704e-7  # 3.2816E-07 # -1   # 
+Mixing.filters.neutronMixerCRV.mu2e.meanEventsPerProton     :   6.844e-6  # 3.6173E-06 # -1   # 
+Mixing.filters.DSMixerCRV.mu2e.meanEventsPerProton	    :   7.062e-5  # 1.4588E-06 # -1   # 
+Mixing.filters.PSMixerCRV.mu2e.meanEventsPerProton	    :   1.562e-4  # 4.2425E-05 # -1   # 
 
 # Mixing.filters.ootMixerCRV.mu2e.meanEventsPerProton	    : 4.5379E-06
 # Mixing.filters.photonMixerCRV.mu2e.meanEventsPerProton   : 1.3449E-07
