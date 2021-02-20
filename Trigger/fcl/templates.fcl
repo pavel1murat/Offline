@@ -213,14 +213,14 @@ Trigger : {
 			     caloMVACE_trigger,
 			     tprSeedDeM_trigger, tprSeedDeP_trigger, cprSeedDeM_trigger, cprSeedDeP_trigger ]
 #	    Compressionlevel: 0
-	    fileProperties : {
-		maxEvents : 1000
+#	    fileProperties : {
+#		maxEvents : 1000
 		# maxSubRuns : 
 		# maxSize : # in Kib
 		# maxAge : #in s
 		# granularity : [Event | SubRun | Run | InputFile | Job] # default is Event 
 		# maxInputFiles : 1 
-	    }
+#	    }
 	    outputCommands: ["drop *_*_*_*",
 			     "keep *_*_*_*" ]
 	}
