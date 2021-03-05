@@ -31,6 +31,7 @@
 #include "Print/inc/CrvCoincidenceClusterPrinter.hh"
 #include "Print/inc/StrawDigiPrinter.hh"
 #include "Print/inc/StrawDigiMCPrinter.hh"
+#include "Print/inc/StrawGasStepPrinter.hh"
 #include "Print/inc/StrawHitPrinter.hh"
 #include "Print/inc/StrawHitFlagPrinter.hh"
 #include "Print/inc/BkgClusterPrinter.hh"
@@ -97,6 +98,8 @@ namespace mu2e {
       	fhicl::Name("strawDigiMCPrinter") }; 
       fhicl::Table<ProductPrinter::ConfigE> strawHitPrinter { 
       	fhicl::Name("strawHitPrinter") }; 
+      fhicl::Table<ProductPrinter::ConfigE> strawGasStepPrinter { 
+      	fhicl::Name("strawGasStepPrinter") }; 
       fhicl::Table<ProductPrinter::Config> strawHitFlagPrinter { 
       	fhicl::Name("strawHitFlagPrinter") }; 
       fhicl::Table<ProductPrinter::Config> bkgClusterPrinter { 
@@ -171,6 +174,7 @@ mu2e::PrintModule::PrintModule(const Parameters& conf):
   _printers.push_back( make_unique<StrawDigiPrinter>( conf().strawDigiPrinter() ) );
   _printers.push_back( make_unique<StrawDigiMCPrinter>( conf().strawDigiMCPrinter() ) );
   _printers.push_back( make_unique<StrawHitPrinter>( conf().strawHitPrinter() ) );
+  _printers.push_back( make_unique<StrawGasStepPrinter>( conf().strawGasStepPrinter() ) );
   _printers.push_back( make_unique<StrawHitFlagPrinter>( conf().strawHitFlagPrinter() ) );
 
   _printers.push_back( make_unique<BkgClusterPrinter>( conf().bkgClusterPrinter() ) );

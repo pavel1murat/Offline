@@ -81,6 +81,11 @@ physics :{
       strawDigiMCPrinter : {
         verbose: 0
       }
+
+      strawGasStepPrinter : {
+        verbose: 0
+      }
+
       strawHitPrinter : {
         verbose: 0
       }
