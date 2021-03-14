@@ -89,6 +89,8 @@ su2020 : {
 	    mean      : 0.0 # No PBI possible for pure signal! 
 	    halfWidth : 1.0
 	}
+
+	SeparateCaloShowerSteps : { @table::SeparateCaloShowerSteps } # defined in Filters
 #------------------------------------------------------------------------------
 # reco producers, compressDigiMCs defined there 
 #------------------------------------------------------------------------------
