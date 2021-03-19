@@ -324,7 +324,7 @@ CalPatRec : { @table::CalPatRec
 	}
 #------------------------------------------------------------------------------
 	DeltaFinder : { module_type:DeltaFinder
-	    comboHitCollectionTag         : makePH                # input coll
+	    comboHitCollectionTag         : makeSH                # input coll - the Diag tool needs a single straw-hit collection
 	    strawHitCollectionTag         : makeSH                # input coll
 	    strawHitFlagCollectionTag     : shouldNotBeUsed       # input coll
 	    # strawHitPositionCollectionTag : makePH                # input coll
@@ -374,9 +374,7 @@ CalPatRec : { @table::CalPatRec
 		printOTracker             : 0                     #
 		printShcol                : 0                     #
 		testOrder                 : 0                     #
-		mcUtils                   : { tool_type : "TrkPatRecMcUtils" 
-		    strawDigiMCCollTag : "compressDigiMCs"
-		}
+		mcUtils                   : { @table::TrkReco.McUtils }
 	    }
 	}
 
@@ -572,17 +570,31 @@ CalPatRec: { @table::CalPatRec
 	DeltaFinderMu                  : { @table::CalPatRec.producers.DeltaFinder
 	    timePeakCollectionTag      : CalTimePeakFinderMu
 	}
+
 	CalSeedFitDem                  : { @table::CalPatRec.producers.CalSeedFit        
 	    SeedCollection             : "CalHelixFinderDe:Positive"
 	}
-	CalSeedFitDmm                  : { @table::CalPatRec.producers.CalSeedFit 
-	    fitparticle                : @local::Particle.muminus
-	    SeedCollection             : "CalHelixFinderDmu:Positive"
+
+	# this is just a placeholder, redefined in prolog_common.fcl
+	CalSeedFitUem                  : { @table::CalPatRec.producers.CalSeedFit        
+	    SeedCollection             : "CalHelixFinderUe:Positive"
 	}
+
 	CalSeedFitDep                  : { @table::CalPatRec.producers.CalSeedFit 
 	    fitparticle                : @local::Particle.eplus  
 	    SeedCollection             : "CalHelixFinderDe:Negative"
 	}
+
+	CalSeedFitDmm                  : { @table::CalPatRec.producers.CalSeedFit 
+	    fitparticle                : @local::Particle.muminus
+	    SeedCollection             : "CalHelixFinderDmu:Positive"
+	}
+	# this is just a placeholder, redefined in prolog_common.fcl
+	CalSeedFitUmm                  : { @table::CalPatRec.producers.CalSeedFit 
+	    fitparticle                : @local::Particle.muminus
+	    SeedCollection             : "CalHelixFinderUmu:Positive"
+	}
+
 	CalSeedFitDmp                  : { @table::CalPatRec.producers.CalSeedFit 
 	    fitparticle                : @local::Particle.muplus
 	    SeedCollection             : "CalHelixFinderDmu:Negative"
@@ -591,14 +603,17 @@ CalPatRec: { @table::CalPatRec
 	MHSeedFitDem                  : { @table::CalPatRec.producers.MHSeedFit        
 	    SeedCollection             : MergeHelixFinderDem
 	}
+
 	MHSeedFitDmm                  : { @table::CalPatRec.producers.MHSeedFit 
 	    fitparticle                : @local::Particle.muminus
 	    SeedCollection             : MergeHelixFinderDmm
 	}
+
 	MHSeedFitDep                  : { @table::CalPatRec.producers.MHSeedFit 
 	    fitparticle                : @local::Particle.eplus  
 	    SeedCollection             : MergeHelixFinderDep
 	}
+
 	MHSeedFitDmp                  : { @table::CalPatRec.producers.MHSeedFit 
 	    fitparticle                : @local::Particle.muplus
 	    SeedCollection             : MergeHelixFinderDmp
@@ -608,17 +623,30 @@ CalPatRec: { @table::CalPatRec
 	    SeedCollection             : CalSeedFitDem
 	    CalTimePeakModuleLabel     : CalTimePeakFinder
 	}
+
+	CalTrkFitUem                   : { @table::CalPatRec.producers.CalTrkFit         
+	    SeedCollection             : CalSeedFitUem
+	    CalTimePeakModuleLabel     : CalTimePeakFinder
+	}
+
 	CalTrkFitDmm                   : { @table::CalPatRec.producers.CalTrkFit 
 	    fitparticle                : @local::Particle.muminus 
 	    SeedCollection             : CalSeedFitDmm
 	    CalTimePeakModuleLabel     : CalTimePeakFinderMu
 	    StrawHitFlagCollection     : "DeltaFinderMu:StrawHits"
 	}
+
+	CalTrkFitUmm                   : { @table::CalPatRec.producers.CalTrkFit         
+	    SeedCollection             : CalSeedFitUmm
+	    CalTimePeakModuleLabel     : CalTimePeakFinder
+	}
+
 	CalTrkFitDep                   : { @table::CalPatRec.producers.CalTrkFit 
 	    fitparticle                : @local::Particle.eplus  
 	    SeedCollection             : CalSeedFitDep
 	    CalTimePeakModuleLabel     : CalTimePeakFinder
 	}
+
 	CalTrkFitDmp                   : { @table::CalPatRec.producers.CalTrkFit 
 	    fitparticle                : @local::Particle.muplus 
 	    SeedCollection             : CalSeedFitDmp
