@@ -121,6 +121,9 @@ physics :{
       kalSeedPrinter : {
         verbose: 3
       }
+      helixSeedPrinter : {
+        verbose: 1
+      }
 
       physicalVolumePrinter : {
         verbose: 1

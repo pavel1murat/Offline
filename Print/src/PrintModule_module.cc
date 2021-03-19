@@ -43,6 +43,7 @@
 #include "Print/inc/SimParticleTimeMapPrinter.hh"
 #include "Print/inc/ComboHitPrinter.hh"
 #include "Print/inc/TimeClusterPrinter.hh"
+#include "Print/inc/HelixSeedPrinter.hh"
 #include "Print/inc/KalSeedPrinter.hh"
 #include "Print/inc/PhysicalVolumePrinter.hh"
 #include "Print/inc/TriggerResultsPrinter.hh"
@@ -122,6 +123,8 @@ namespace mu2e {
 	fhicl::Name("comboHitPrinter") }; 
       fhicl::Table<ProductPrinter::Config> timeClusterPrinter { 
 	fhicl::Name("timeClusterPrinter") }; 
+      fhicl::Table<ProductPrinter::Config> helixSeedPrinter { 
+	fhicl::Name("helixSeedPrinter") }; 
       fhicl::Table<ProductPrinter::Config> kalSeedPrinter { 
 	fhicl::Name("kalSeedPrinter") }; 
       fhicl::Table<ProductPrinter::Config> physicalVolumePrinter { 
@@ -186,6 +189,7 @@ mu2e::PrintModule::PrintModule(const Parameters& conf):
   _printers.push_back( make_unique<SimParticleTimeMapPrinter>( conf().simParticleTimeMapPrinter() ) );
   _printers.push_back( make_unique<ComboHitPrinter>( conf().comboHitPrinter() ) );
   _printers.push_back( make_unique<TimeClusterPrinter>( conf().timeClusterPrinter() ) );
+  _printers.push_back( make_unique<HelixSeedPrinter>( conf().helixSeedPrinter() ) );
   _printers.push_back( make_unique<KalSeedPrinter>( conf().kalSeedPrinter() ) );
   _printers.push_back( make_unique<PhysicalVolumePrinter>( conf().physicalVolumePrinter() ) );
   _printers.push_back( make_unique<TriggerResultsPrinter>( conf().triggerResultsPrinter() ) );
