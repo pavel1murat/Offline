@@ -559,8 +559,10 @@ namespace mu2e {
 
 //-----------------------------------------------------------------------------
   void DeltaFinder::produce(art::Event& Event) {
+    char oname[100];
+    sprintf(oname,"%s",moduleDescription().moduleLabel().data());
 
-    if (_debugLevel) printf(">>> DeltaFinder::produce  event number: %10i\n",Event.event());  
+    if (_debugLevel) printf(">>> %s::produce  event number: %10i\n",oname,Event.event());  
 //-----------------------------------------------------------------------------
 // clear memory in the beginning of event processing and cache event pointer
 //-----------------------------------------------------------------------------
