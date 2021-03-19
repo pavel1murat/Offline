@@ -107,6 +107,10 @@ su2020 : {
 	TrkQualDmuMHPar : { @table::TrkQualDmuM KalSeedCollection: "KFFDmuMHPar" }
 	TrkQualDmuMHDar : { @table::TrkQualDmuM KalSeedCollection: "KFFDmuMHDar" }
 
+	TrkQualUeMHPar  : { @table::TrkQualUeM  KalSeedCollection: "KFFUeMHPar"  }
+	TrkQualUeMHDar  : { @table::TrkQualUeM  KalSeedCollection: "KFFUeMHDar"  }
+	TrkQualUmuMHPar : { @table::TrkQualUmuM KalSeedCollection: "KFFUmuMHPar" }
+	TrkQualUmuMHDar : { @table::TrkQualUmuM KalSeedCollection: "KFFUmuMHDar" }
 #------------------------------------------------------------------------------
 # helix mergers: each combines all found helices with the same direction and mass 
 # into one collection
@@ -303,6 +307,12 @@ su2020.helix_reco_de : [
 			MHFinderDe                                              # helix merging
 		       ]
 
+# upstream e+/e- helix reconstruction
+su2020.helix_reco_ue : [
+			TimeClusterFinderUe, HelixFinderUe,                     # TrkPatRec
+			MHFinderUe                                              # helix merging
+		       ]
+
 # downstream electron reconstruction: e- and e+ combined
 su2020.trk_reco_de  : [
 		       TimeClusterFinderDe, HelixFinderDe,                     # TrkPatRec
@@ -344,6 +354,14 @@ su2020.trk_reco_ue  : [
 		       MHFinderUe,                                             # helix merging
 		       KSFUeMH,                                                # Seed fit (chisquared, no drift)
 		       KFFUeMHPar , KFFUeMHDar                                 # final Kalman filter fit
+		      ]
+
+# upstream electron reconstruction, DAR
+su2020.trk_reco_ue_dar : [
+		       TimeClusterFinderUe, HelixFinderUe,                     # TrkPatRec
+		       MHFinderUe,                                             # helix merging
+		       KSFUeMH,                                                # Seed fit (chisquared, no drift)
+		       KFFUeMHDar                                              # final Kalman filter, DAR-only
 		      ]
 
 # upstream muon reconstruction (mu- and mu+): standalone-only pattern recognition, 
