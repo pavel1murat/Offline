@@ -309,7 +309,7 @@ su2020.helix_reco_de : [
 
 # upstream e+/e- helix reconstruction
 su2020.helix_reco_ue : [
-			TimeClusterFinderUe, HelixFinderUe,                     # TrkPatRec
+			TimeClusterFinderUe, HelixFinderUe,                     # TrkPatRec-only
 			MHFinderUe                                              # helix merging
 		       ]
 
@@ -494,11 +494,13 @@ su2020.triggers         : [
 		      ]
 
 #------------------------------------------------------------------------------
-# p22: read digis, reconstruct helices
+# p22: read digis, reconstruct helices - both directions, 
+#      2021-03-21: currently time clustering is currently not direction-symmetric
 #------------------------------------------------------------------------------
 	su2020_p22 : [ @sequence::su2020.calo_reco,
 		       @sequence::su2020.trk_hit_reco,
-		       @sequence::su2020.helix_reco_de
+		       @sequence::su2020.helix_reco_de,
+		       @sequence::su2020.helix_reco_ue
 		      ]
 
 #------------------------------------------------------------------------------

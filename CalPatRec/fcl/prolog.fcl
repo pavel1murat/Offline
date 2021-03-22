@@ -663,12 +663,6 @@ CalPatRec: { @table::CalPatRec
 	    StrawHitFlagCollectionLabel   : "DeltaFinderMu:ComboHits"
 	    TimeClusterCollectionLabel    : CalTimePeakFinderMu
 	}
-	# CalHelixFinderDeP              : { @table::CalPatRec.filters.CalHelixFinder fitparticle: @local::Particle.eplus   }
-	# CalHelixFinderDmuP             : { @table::CalPatRec.filters.CalHelixFinder 
-	#     fitparticle                   : @local::Particle.muplus 
-	#     StrawHitFlagCollectionLabel   : "DeltaFinderMu:ComboHits" 
-	#     TimeClusterCollectionLabel    : CalTimePeakFinderMu
-	# }
     }
 }
 
