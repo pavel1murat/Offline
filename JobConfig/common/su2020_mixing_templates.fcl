@@ -593,10 +593,13 @@ Mixing.filters.deuteronMixerTrkCal.mu2e.meanEventsPerProton :   2.547e-7  # 1.62
 # SU2020 DS and PS input streams have been generated with the timing cut-off T>200ns
 # what are the MDC2018 definitions of "cut" and "uncut" ?
 #------------------------------------------------------------------------------------------------------
-Mixing.filters.dioMixerCRV.mu2e.meanEventsPerProton         :   6.704e-7  # 3.2816E-07 # -1   # 
-Mixing.filters.neutronMixerCRV.mu2e.meanEventsPerProton     :   6.844e-6  # 3.6173E-06 # -1   # 
-Mixing.filters.DSMixerCRV.mu2e.meanEventsPerProton	    :   7.062e-5  # 1.4588E-06 # -1   # 
-Mixing.filters.PSMixerCRV.mu2e.meanEventsPerProton	    :   1.562e-4  # 4.2425E-05 # -1   # 
+#                                                           | SU2020     |  MDC2018     |
+#-----------------------------------------------------------+------------+--------------+
+Mixing.filters.dioMixerCRV.mu2e.meanEventsPerProton         : 6.704e-7   #  3.2816E-07  #
+Mixing.filters.neutronMixerCRV.mu2e.meanEventsPerProton     : 6.844e-6   #  3.6173E-06  #
+Mixing.filters.PSMixerCRV.mu2e.meanEventsPerProton	    : 1.562e-4   #  4.2425E-05  #
+#Mixing.filters.DSMixerCRV.mu2e.meanEventsPerProton	    : 1.935E-5   #  1.4588E-06  # crv01
+Mixing.filters.DSMixerCRV.mu2e.meanEventsPerProton	    : 7.835E-6   #  1.4588E-06  # crv02
 
 # Mixing.filters.ootMixerCRV.mu2e.meanEventsPerProton	    : 4.5379E-06
 # Mixing.filters.photonMixerCRV.mu2e.meanEventsPerProton   : 1.3449E-07
