@@ -351,8 +351,9 @@ EventGenerator : { @table::EventGenerator
 #------------------------------------------------------------------------------
 # mu+ positrons,50%B field, Al, 1st order radiative corrected spectrum
 #------------------------------------------------------------------------------
-  	MichelPositronGun : { @table::StoppedParticleReactionGun 
-	    physics : { @table::StoppedParticleReactionGun.physics
+  	MichelPositronGun : { module_type : StoppedParticleReactionGunMuPlus 
+	    physics : {# @table::StoppedParticleReactionGun.physics
+                genId            : StoppedParticleReactionGun
 		pdgId            :  -11
 		spectrumVariable : "totalEnergy"
 		spectrumShape    : "tabulated"
@@ -362,6 +363,7 @@ EventGenerator : { @table::EventGenerator
 #            muonStops            : {  @table::EventGenerator.muonStops }
 	    muonStops            : {  @table::mu2e.tgtMuPlusStops }
            doHistograms          : true
+           fixedTime             : -1.e6   # if positive, vertices are generated at a given fixedTime
 	}
 #------------------------------------------------------------------------------
 # DIO electrons, Al, leading order spectrum
