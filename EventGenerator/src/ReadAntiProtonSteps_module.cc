@@ -339,6 +339,12 @@ namespace mu2e {
 		  nt[40] = iSim.second.endMomentum().vect().z();
 		}
 
+		if ((mykey>400000 && mykey<500000) && _stage>=4  && iSim.second.pdgId() == pdgId && pos.z()>5000.){
+		  nt[38]=hit.momentum().x();
+		  nt[39]=hit.momentum().y();
+		  nt[40]=hit.momentum().z();
+		}
+
 		if(_diagLevel > 0 && (startPbarFourMomentum.cosTheta()<=-0.8 && startPbarFourMomentum.vect().mag()>=3000. && flag ==0)) {
 		  std::cout << "key      parent    pdgId       Start  Position                  Start P               CosTheta              EndPosition                End P                  vol   process\n" << std::endl;
 		  flag =1;
@@ -371,7 +377,7 @@ namespace mu2e {
 
 	      }//end loop over simParticles
 
-	      _ntAntiProtonSteps->Fill(nt);
+	      if (_stage<4 || pos.z()>5000) _ntAntiProtonSteps->Fill(nt);
 	    }//end goodPDG
 
 	} // end loop over hits.

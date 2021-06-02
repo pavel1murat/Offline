@@ -89,6 +89,8 @@ su2020 : {
 	    mean      : 0.0 # No PBI possible for pure signal! 
 	    halfWidth : 1.0
 	}
+
+	SeparateCaloShowerSteps : { @table::SeparateCaloShowerSteps } # defined in Filters
 #------------------------------------------------------------------------------
 # reco producers, compressDigiMCs defined there 
 #------------------------------------------------------------------------------
@@ -105,6 +107,10 @@ su2020 : {
 	TrkQualDmuMHPar : { @table::TrkQualDmuM KalSeedCollection: "KFFDmuMHPar" }
 	TrkQualDmuMHDar : { @table::TrkQualDmuM KalSeedCollection: "KFFDmuMHDar" }
 
+	TrkQualUeMHPar  : { @table::TrkQualUeM  KalSeedCollection: "KFFUeMHPar"  }
+	TrkQualUeMHDar  : { @table::TrkQualUeM  KalSeedCollection: "KFFUeMHDar"  }
+	TrkQualUmuMHPar : { @table::TrkQualUmuM KalSeedCollection: "KFFUmuMHPar" }
+	TrkQualUmuMHDar : { @table::TrkQualUmuM KalSeedCollection: "KFFUmuMHDar" }
 #------------------------------------------------------------------------------
 # helix mergers: each combines all found helices with the same direction and mass 
 # into one collection
@@ -157,9 +163,15 @@ su2020 : {
 
 	detectorFilter : { module_type: FilterG4Out
 	    mainHitInputs   : [ "g4run:tracker" ]
-	    mainSPPtrInputs : []
+	    mainSPPtrInputs : [ ]
 	    extraHitInputs  : [ "g4run:virtualdetector", "g4run:protonabsorber" ]
-	    vetoDaughters   : []
+	    vetoDaughters   : [ ]
+	}
+
+	crvFilter: { module_type: FilterG4Out
+	    mainHitInputs : [ "g4run:CRV" ]
+	    extraHitInputs: [ "g4run:virtualdetector" ]
+	    vetoParticles : [ ]
 	}
 
 	filterStepPointMomentum : { @table::FilterStepPointMomentum
@@ -295,6 +307,12 @@ su2020.helix_reco_de : [
 			MHFinderDe                                              # helix merging
 		       ]
 
+# upstream e+/e- helix reconstruction
+su2020.helix_reco_ue : [
+			TimeClusterFinderUe, HelixFinderUe,                     # TrkPatRec-only
+			MHFinderUe                                              # helix merging
+		       ]
+
 # downstream electron reconstruction: e- and e+ combined
 su2020.trk_reco_de  : [
 		       TimeClusterFinderDe, HelixFinderDe,                     # TrkPatRec
@@ -336,6 +354,14 @@ su2020.trk_reco_ue  : [
 		       MHFinderUe,                                             # helix merging
 		       KSFUeMH,                                                # Seed fit (chisquared, no drift)
 		       KFFUeMHPar , KFFUeMHDar                                 # final Kalman filter fit
+		      ]
+
+# upstream electron reconstruction, DAR
+su2020.trk_reco_ue_dar : [
+		       TimeClusterFinderUe, HelixFinderUe,                     # TrkPatRec
+		       MHFinderUe,                                             # helix merging
+		       KSFUeMH,                                                # Seed fit (chisquared, no drift)
+		       KFFUeMHDar                                              # final Kalman filter, DAR-only
 		      ]
 
 # upstream muon reconstruction (mu- and mu+): standalone-only pattern recognition, 
@@ -468,11 +494,13 @@ su2020.triggers         : [
 		      ]
 
 #------------------------------------------------------------------------------
-# p22: read digis, reconstruct helices
+# p22: read digis, reconstruct helices - both directions, 
+#      2021-03-21: currently time clustering is currently not direction-symmetric
 #------------------------------------------------------------------------------
 	su2020_p22 : [ @sequence::su2020.calo_reco,
 		       @sequence::su2020.trk_hit_reco,
-		       @sequence::su2020.helix_reco_de
+		       @sequence::su2020.helix_reco_de,
+		       @sequence::su2020.helix_reco_ue
 		      ]
 
 #------------------------------------------------------------------------------
