@@ -1,4 +1,4 @@
-#
+# -*- mode:tcl -*- 
 # run the official reconstruction sequences and Display events from a digi file
 #
 #include "fcl/minimalMessageService.fcl"
@@ -19,10 +19,14 @@ physics.analyzers: {
       module_type     : EventDisplay
       g4ModuleLabel             : "CompressDigiMCs"
       physicalVolumesMultiLabel : "compressPV"
+	timeOffsets               : {
+	    inputs : [ "compressDigiMCs:protonTimeMap", "compressDigiMCs:muonTimeMap", "compressDigiMCs:cosmicTimeMap" ]
+	}
      }
 }
 # add the display to the path
-physics.EndPath : [ RecoCheck, eventdisplay]
+# physics.EndPath : [ RecoCheck, eventdisplay]
+physics.EndPath : [ eventdisplay]
 services.TFileService.fileName: "nts.owner.EventDisplayDigis.version.sequencer.root"
 
 source.readParameterSets : false
