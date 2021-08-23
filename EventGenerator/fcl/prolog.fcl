@@ -335,7 +335,7 @@ EventGenerator : { @table::EventGenerator
 	}
 
 #------------------------------------------------------------------------------
-# stopped mu+ --> positrons, 50% magnetic field, default stopping target
+# stopped mu+ --> positrons, 50% magnetic field, default stopping target, zero mass
 #------------------------------------------------------------------------------
   	eplusGunB50 : { @table::StoppedParticleReactionGun 
 	    physics : { @table::StoppedParticleReactionGun.physics
@@ -349,10 +349,60 @@ EventGenerator : { @table::EventGenerator
           doHistograms          : true
 	}
 #------------------------------------------------------------------------------
-# mu+ positrons,50%B field, Al, 1st order radiative corrected spectrum
+# stopped mu+ --> positrons, 50% magnetic field, default stopping target
 #------------------------------------------------------------------------------
-  	MichelPositronGun : { module_type : StoppedParticleReactionGunMuPlus 
-	    physics : {# @table::StoppedParticleReactionGun.physics
+  	eplusGunB50m40 : { @table::StoppedParticleReactionGun 
+	    physics : { @table::StoppedParticleReactionGun.physics
+		pdgId            :  -11
+                elow             :  45.2558
+                ehi              :  45.2559
+		spectrumVariable :  "momentum"   # "totalEnergy"
+		spectrumShape    :  "flat"       # "tabulated"
+	    }
+	    muonStops            : {  @table::mu2e.tgtMuPlusStops }
+          doHistograms          : true
+	}
+#------------------------------------------------------------------------------
+# mu+ positrons,50%B field, Al, 1st order radiative corrected spectrum;
+#------------------------------------------------------------------------------
+  	MichelPositronGun : { module_type : StoppedParticleReactionGun
+	   physics : {@table::StoppedParticleReactionGun.physics
+                genId            : StoppedParticleReactionGun
+		pdgId            :  -11
+		spectrumVariable : "totalEnergy"
+		spectrumShape    : "tabulated"
+		spectrumFileName : "ConditionsService/data/Micheltbl.tbl"
+         #       spectrumFileName : "ConditionsService/data/Majoron.tbl"
+	    }
+#            muonStops            : {  @table::EventGenerator.muonStops }
+	    muonStops            : {  @table::mu2e.tgtMuPlusStops }
+           doHistograms          : true
+           fixedTime             : -1.e6   # if positive, vertices are generated at a given fixedTime
+	}
+#------------------------------------------------------------------------------
+# mu+ positrons,50%B field, Al, 1st order radiative corrected spectrum;
+# Generate multiple particle/event
+#------------------------------------------------------------------------------
+  	MichelPositronGunMultiple : { module_type : StoppedParticleReactionGunMultiple
+	   physics : {#@table::StoppedParticleReactionGun.physics
+                genId            : StoppedParticleReactionGun
+		pdgId            :  -11
+		spectrumVariable : "totalEnergy"
+		spectrumShape    : "tabulated"
+		spectrumFileName : "ConditionsService/data/Micheltbl.tbl"
+         #       spectrumFileName : "ConditionsService/data/Majoron.tbl"
+	    }
+#            muonStops            : {  @table::EventGenerator.muonStops }
+	    muonStops            : {  @table::mu2e.tgtMuPlusStops }
+           doHistograms          : true
+           fixedTime             : -1.e6   # if positive, vertices are generated at a given fixedTime
+	}
+#------------------------------------------------------------------------------
+# mu+ positrons,50%B field, Al, 1st order radiative corrected spectrum with muon
+# spin oriented towards -Z direction
+#------------------------------------------------------------------------------
+  	MichelPositronGunSpin : { module_type : StoppedParticleReactionGunMuPlus 
+	    physics : {#@table::StoppedParticleReactionGun.physics
                 genId            : StoppedParticleReactionGun
 		pdgId            :  -11
 		spectrumVariable : "totalEnergy"

@@ -8,7 +8,7 @@
 # Default is for CRY cosmics  for other files, use the include below
 #include "JobConfig/reco/mcdigis_CRY.fcl"
 #RecoMCDigis_CRY.fcl"
-###include "JobConfig/reco/RecoMCDigis_nocosmic.fcl"
+##include "JobConfig/reco/mcdigis_nocosmic.fcl"
 
 process_name : EventDisplayDigis 
 # add the display to the analyzers
@@ -28,6 +28,11 @@ physics.analyzers: {
 # physics.EndPath : [ RecoCheck, eventdisplay]
 physics.EndPath : [ eventdisplay]
 services.TFileService.fileName: "nts.owner.EventDisplayDigis.version.sequencer.root"
+
+#services : @local::Services.SimAndReco
+#services.SeedService.maxUniqueEngines: 50
+
+# services.SeedService.baseSeed: 614458856
 
 source.readParameterSets : false
 
