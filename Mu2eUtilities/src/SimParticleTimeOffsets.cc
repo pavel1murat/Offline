@@ -93,7 +93,7 @@ namespace mu2e {
 //-----------------------------------------------------------------------------
         // it = m.find(p);
 
-	auto it = m.begin();
+	it = m.begin();
 	while(it != m.end()) {
 	  // for (std::map<>::iterator itt=m.begin(); itt!=m.end(); ++itt){
 	  if (it->first.get() == s) break;
@@ -102,7 +102,7 @@ namespace mu2e {
 
         if(it != m.end()) {
           // cache the result
-          m[orig] = it->second;
+	  //          m[orig] = it->second;
         }
         else { // The ultimate parent must be in the map
           throw cet::exception("BADINPUTS")
