@@ -42,6 +42,7 @@ namespace mu2e {
 
     void updateMap(const art::Event& evt);
 
+    double totalTimeOffset(const SimParticle* p) const;
     double totalTimeOffset(art::Ptr<SimParticle> p) const;
     double totalTimeOffset(const StepPointMC& s) const;
     double timeWithOffsetsApplied(const StepPointMC& s) const;

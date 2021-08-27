@@ -42,6 +42,81 @@ namespace mu2e {
     }
   }
 
+//-----------------------------------------------------------------------------
+// 2021-08-20 P.Murat
+//
+// this is an inefficient  kludge needed only because SimParticleColelction stores pointers 
+// to SimParticles, while all other containters store art::Ptr's...
+//-----------------------------------------------------------------------------
+  double SimParticleTimeOffset::totalTimeOffset(const SimParticle* Sim) const {
+
+    if(offsets_.size() != inputs_.size()) {
+      throw cet::exception("INVOCATION_ERROR")
+        <<"SimParticleTimeOffset::totalTimeOffset():"
+        <<" the number of loaded time maps "<<offsets_.size()
+        <<" does not match the number of requested maps "<<inputs_.size()
+        <<". Did you forget to call SimParticleTimeOffset::updateMap()?\n"
+        ;
+    }
+
+    double dt = 0;
+
+    // Look up the particle in all the maps, and add up the offsets
+    for(auto& m : offsets_) {
+
+//-----------------------------------------------------------------------------
+// kludge substitute for std::map::find
+//-----------------------------------------------------------------------------
+      // auto it = m.find(p);
+      // this may be slow , but there is no other way around
+      
+      auto it = m.begin();
+      while(it != m.end()) {
+	// for (std::map<>::iterator itt=m.begin(); itt!=m.end(); ++itt){
+	if (it->first.get() == Sim) break;
+	it++;
+      }
+
+      auto p = it->first;
+      
+      if(it == m.end()) { // no cached record for this particle
+
+        const auto orig(p);
+
+        // Navigate to the primary
+	SimParticle* s = (SimParticle*) Sim;
+        while(s->parent()) {
+          s = (SimParticle*) s->parent().get();
+        }
+//-----------------------------------------------------------------------------
+// kludge substitute for std::map::find
+//-----------------------------------------------------------------------------
+        // it = m.find(p);
+
+	it = m.begin();
+	while(it != m.end()) {
+	  // for (std::map<>::iterator itt=m.begin(); itt!=m.end(); ++itt){
+	  if (it->first.get() == s) break;
+	  it++;
+	}
+
+        if(it != m.end()) {
+          // cache the result
+	  //          m[orig] = it->second;
+        }
+        else { // The ultimate parent must be in the map
+          throw cet::exception("BADINPUTS")
+            <<"SimParticleTimeOffset::totalTimeOffset(): the primary "<<p <<" is not in an input map\n";
+        }
+      } // caching
+
+      dt += it->second;
+
+    } // loop over offsets_ maps
+
+    return dt;
+  }
+
   double SimParticleTimeOffset::totalTimeOffset(art::Ptr<SimParticle> p) const {
 
     if(offsets_.size() != inputs_.size()) {
