@@ -66,8 +66,8 @@ mu2eg4DefaultPhysics: {
 #----------------
 mu2eg4DefaultResourceLimits: {
     maxStepsPerTrack : 100000
-    maxStepPointCollectionSize : 100000
-    maxSimParticleCollectionSize: 100000
+    maxStepPointCollectionSize : 100000 
+    maxSimParticleCollectionSize: 100000 
 }
 #----------------
 mu2eg4NoVisualization: {

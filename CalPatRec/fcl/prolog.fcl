@@ -71,7 +71,7 @@ CalPatRec : { @table::CalPatRec
 	distPatRec                              : 100.      # mm
 	minDeltaNShPatRec                       : 2
 	mindist                                 : 500.      # mm
-	minP                                    :  50.      # MeV/c
+	minP                                    :  20.      # MeV/c
 	maxP                                    : 150.      # MeV/c
 	minAbsTanDip                            : 0.3
 	maxAbsTanDip                            : 2.0
@@ -522,8 +522,8 @@ CalPatRec : { @table::CalPatRec
 	    HitSelectionBits                            : [] 
 	    BackgroundSelectionBits                     : [] 
 	    MinNHits                                    : @local::CalPatRec.minNStrawHits  
-	    DtMin                                       : -30.   # value before 2017-11-17 was -40. ns
-	    DtMax                                       :  30.   # 2018-07-29 P.M.: DtMax=20ns was cutting out a few percent of hits
+	    DtMin                                       : -20#-30.   # value before 2017-11-17 was -40. ns
+	    DtMax                                       :  20 # 30.   # 2018-07-29 P.M.: DtMax=20ns was cutting out a few percent of hits
 	#    minClusterEnergy                            : 50.    # MeV
             minClusterEnergy                            : 10.    # MeV
 	    minClusterSize                              : 2      # number of crystals

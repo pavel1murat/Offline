@@ -396,6 +396,25 @@ EventGenerator : { @table::EventGenerator
 	    muonStops            : {  @table::mu2e.tgtMuPlusStops }
            doHistograms          : true
            fixedTime             : -1.e6   # if positive, vertices are generated at a given fixedTime
+           meanMultiplicity      : 40
+	}
+#------------------------------------------------------------------------------
+# mu- decay electrons,50%B field, Al, dio spectrum;
+# Generate multiple particle/event
+#------------------------------------------------------------------------------
+  	eminusGunB50 : { module_type : StoppedParticleReactionGun
+	   physics : {@table::StoppedParticleReactionGun.physics
+                genId            : StoppedParticleReactionGun
+		pdgId            :  11
+		spectrumVariable : "totalEnergy"
+		spectrumShape    : "tabulated"
+		spectrumFileName : "ConditionsService/data/czarnecki_szafron_Al_2016.tbl"
+         #       spectrumFileName : "ConditionsService/data/Majoron.tbl"
+	    }
+#            muonStops            : {  @table::EventGenerator.muonStops }
+	    muonStops            : {  @table::mu2e.tgtMuPlusStops }
+           doHistograms          : true
+           fixedTime             : -1.e6   # if positive, vertices are generated at a given fixedTime
 	}
 #------------------------------------------------------------------------------
 # mu+ positrons,50%B field, Al, 1st order radiative corrected spectrum with muon
