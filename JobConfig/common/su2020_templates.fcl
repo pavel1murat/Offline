@@ -513,6 +513,11 @@ su2020.triggers         : [
 	su2020_p100 : [ ]
     }
 #------------------------------------------------------------------------------
+# upstream time clustering: turn off the ANN-based hit removal
+#------------------------------------------------------------------------------
+# su2020.producers.TimeClusterFinderUe.PrefilterCluster : false
+# su2020.producers.TimeClusterFinderUe.MinKeepHitMVA    : -100.
+#------------------------------------------------------------------------------
 # introduce blind time - start of digitization
 #------------------------------------------------------------------------------
 services.DbService.verbose                                   : 0
@@ -545,7 +550,6 @@ physics.producers.DeltaFinder.minimumTime                    : @local::BLIND_TIM
 # 
 physics.filters.CalHelixFinderDe.HelixFinderAlg.minimumTime : @erase
 physics.filters.CalHelixFinderDe.HelixFinderAlg.minimumTime : @local::BLIND_TIME
-
 #------------------------------------------------------------------------------
 # common patches to offline modules (inherited from JobConfig)
 #------------------------------------------------------------------------------
