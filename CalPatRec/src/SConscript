@@ -8,14 +8,12 @@
 import os
 Import('env')
 Import('mu2e_helper')
-# Import('calpatrec_helper')
 
 babarlibs     = env['BABARLIBS']
 rootlibs      = env['ROOTLIBS']
 extrarootlibs = ['Spectrum', 'TMVA' , 'Minuit' , 'XMLIO' ]
 
 helper=mu2e_helper(env);
-# helper=calpatrec_helper();
 
 mainlib = helper.make_mainlib( [ 'mu2e_TrkDiag',
                                  'mu2e_CaloCluster',

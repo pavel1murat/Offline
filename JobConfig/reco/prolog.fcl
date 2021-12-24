@@ -217,7 +217,6 @@ Reconstruction : {
   CrvRecoSequence : [ CrvRecoPulses, CrvCoincidence, CrvCoincidenceClusterFinder ]
 # full MC sequence
   RecoMCSequence :  [ CaloMCFix, FindMCPrimary,  CrvCoincidenceClusterMatchMC, SelectRecoMC, compressRecoMCs ]
-#  RecoMCSequence :  [ CaloMCFix, CrvCoincidenceClusterMatchMC ]
 
 # define products to keep
 # First, high-level reco products

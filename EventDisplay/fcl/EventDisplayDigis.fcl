@@ -29,10 +29,5 @@ physics.analyzers: {
 physics.EndPath : [ eventdisplay]
 services.TFileService.fileName: "nts.owner.EventDisplayDigis.version.sequencer.root"
 
-#services : @local::Services.SimAndReco
-#services.SeedService.maxUniqueEngines: 50
-
-# services.SeedService.baseSeed: 614458856
-
 source.readParameterSets : false
 
