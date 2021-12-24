@@ -31,6 +31,12 @@ FilterStepPointMomentum : {
     fillHistograms : false
 }
 
+SimParticleFilter : {
+    module_type    : SimParticleFilter
+    pdgID          : 13
+    minP           : -1 
+}
+
 StrawDigiMCFilter : { module_type : StrawDigiMCFilter
     StrawDigiMCCollection : "makeSD"
     MinNDigis             : 10

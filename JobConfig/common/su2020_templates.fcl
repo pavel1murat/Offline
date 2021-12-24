@@ -116,16 +116,16 @@ su2020 : {
 # into one collection
 #------------------------------------------------------------------------------
 	MHFinderDe : { @table::TrkReco.producers.MergeHelices
-	    HelixFinders : [ "HelixFinderDe:Positive", "CalHelixFinderDe:Positive", "HelixFinderDe:Negative", "CalHelixFinderDe:Negative"]
+	    HelixFinders : [ "HelixFinderDe:Positive" , "CalHelixFinderDe:Positive" , "HelixFinderDe:Negative" , "CalHelixFinderDe:Negative" ]
 	}
 	MHFinderDmu : { @table::TrkReco.producers.MergeHelices
-	    HelixFinders : [ "HelixFinderDmu:Positive", "CalHelixFinderDmu:Positive", "HelixFinderDe:Negative", "CalHelixFinderDe:Negative"]
+	    HelixFinders : [ "HelixFinderDmu:Positive", "CalHelixFinderDmu:Positive", "HelixFinderDmu:Negative", "CalHelixFinderDmu:Negative"]
 	}
 	MHFinderUe : { @table::TrkReco.producers.MergeHelices
-	    HelixFinders : [ "HelixFinderUe:Positive", "HelixFinderUe:Negative"]
+	    HelixFinders : [ "HelixFinderUe:Positive" , "CalHelixFinderUe:Positive" , "HelixFinderUe:Negative" , "CalHelixFinderUe:Negative" ]
 	}
 	MHFinderUmu : { @table::TrkReco.producers.MergeHelices
-	    HelixFinders : [ "HelixFinderUe:Positive", "HelixFinderUe:Negative"]
+	    HelixFinders : [ "HelixFinderUmu:Positive", "CalHelixFinderUmu:Positive", "HelixFinderUmu:Negative", "CalHelixFinderUmu:Negative"]
 	}
 
 #------------------------------------------------------------------------------
@@ -180,6 +180,7 @@ su2020 : {
 
 	@table::CalPatRec.filters
 
+	SimParticleFilter : { @table::SimParticleFilter }              # Filters/fcl/prolog.fcl
 	StrawDigiMCFilter : { @table::StrawDigiMCFilter }              # Filters/fcl/prolog.fcl
 
 	CaloShowerSimFilter : { module_type :CaloShowerSimFilter
@@ -310,6 +311,7 @@ su2020.helix_reco_de : [
 # upstream e+/e- helix reconstruction
 su2020.helix_reco_ue : [
 			TimeClusterFinderUe, HelixFinderUe,                     # TrkPatRec-only
+			CalTimePeakFinderUe, DeltaFinderUe, CalHelixFinderUe,   # CalPatRec
 			MHFinderUe                                              # helix merging
 		       ]
 
@@ -351,6 +353,7 @@ su2020.trk_reco_dmu_dar : [
 # calorimeter-seeded algorithm is designed to deal only with the downstream tracks
 su2020.trk_reco_ue  : [
 		       TimeClusterFinderUe, HelixFinderUe,   
+		       CalTimePeakFinderUe, DeltaFinderUe, CalHelixFinderUe,   # CalPatRec
 		       MHFinderUe,                                             # helix merging
 		       KSFUeMH,                                                # Seed fit (chisquared, no drift)
 		       KFFUeMHPar , KFFUeMHDar                                 # final Kalman filter fit
@@ -359,6 +362,7 @@ su2020.trk_reco_ue  : [
 # upstream electron reconstruction, DAR
 su2020.trk_reco_ue_dar : [
 		       TimeClusterFinderUe, HelixFinderUe,                     # TrkPatRec
+		       CalTimePeakFinderUe, DeltaFinderUe, CalHelixFinderUe,   # CalPatRec
 		       MHFinderUe,                                             # helix merging
 		       KSFUeMH,                                                # Seed fit (chisquared, no drift)
 		       KFFUeMHDar                                              # final Kalman filter, DAR-only
