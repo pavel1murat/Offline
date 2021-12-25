@@ -33,6 +33,8 @@ FilterStepPointMomentum : {
 
 SimParticleFilter : {
     module_type    : SimParticleFilter
+    simpCollTag    : "muonBeamFilter"
+    stage          : -1
     pdgID          : 13
     minP           : -1 
 }

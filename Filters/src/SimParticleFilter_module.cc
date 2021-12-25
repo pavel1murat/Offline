@@ -31,12 +31,13 @@ namespace mu2e {
       explicit SimParticleFilter(fhicl::ParameterSet const& pset);
 
     private:
-      bool beginRun(art::Run& run) override;
-      bool endRun(art::Run& run) override;
-      bool endSubRun(art::SubRun& sr) override;
-      bool filter(art::Event& event) override;
+      bool beginRun (art::Run&    run  ) override;
+      bool endRun   (art::Run&    run  ) override;
+      bool endSubRun(art::SubRun& sr   ) override;
+      bool filter   (art::Event&  event) override;
       
       art::InputTag _simpCollTag;
+      int           _stage;
       double        _minP;
       PDGCode::type _pdgID;
       unsigned      _nevt, _npass;
@@ -44,9 +45,10 @@ namespace mu2e {
 
   SimParticleFilter::SimParticleFilter(fhicl::ParameterSet const& pset):
     art::EDFilter{pset},
-    _simpCollTag (pset.get<std::string>      ("simpCollTag"   ,"compressDigiMCs")),
-    _minP        (pset.get<double>           ("minP          ",-1               )),
-    _pdgID       (PDGCode::type(pset.get<int>("pdgID"         , 0)              )),
+    _simpCollTag (pset.get<std::string>      ("simpCollTag" )),
+    _stage       (pset.get<int>              ("stage"       )),
+    _minP        (pset.get<double>           ("minP"        )),
+    _pdgID       (PDGCode::type(pset.get<int>("pdgID"      ))),
     _nevt(0), _npass(0){}
 
   bool SimParticleFilter::beginRun(art::Run& run) {
@@ -73,13 +75,18 @@ namespace mu2e {
     bool rc(false);
 
     // find highest momentum gen particle that passes cuts
+    // 
     for ( const auto& i: *simpColl ) {
       const SimParticle* simp = &i.second;
-      if (abs(simp->pdgId()) == _pdgID) {
-        if (simp->startMomentum().vect().mag() > _minP) {
-	  // there is at least one particle with requested PDG_ID and P > minP
-	  rc = true; 
-	  break;
+      int stage = (simp->id().asInt()/100000) + 1;
+      if ((_stage <= 0) or (_stage == stage)) { 
+	
+	if (abs(simp->pdgId()) == _pdgID) {
+	  if (simp->startMomentum().vect().mag() > _minP) {
+	    // there is at least one particle with requested PDG_ID and P > minP
+	    rc = true; 
+	    break;
+	  }
 	}
       }
     }
