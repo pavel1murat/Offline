@@ -28,6 +28,7 @@ FilterStepPointMomentum : {
     tMin           : -1.e10
     tMax           :  1.e10
     volumeId       :  0         # if positive, defines the volume id to look at
+    pdgId          : 0          # undefined, not used
     fillHistograms : false
 }
 

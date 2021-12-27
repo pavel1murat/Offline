@@ -39,6 +39,7 @@ namespace mu2e {
     double                tMax_           ; // 
     double                mbtime_         ; // microbunch length, ns
     uint                  volumeId_       ; // default : -1
+    int                   pdgId_          ; // default :  0
     bool                  fillHistograms_ ; // 
     // statistics counters
     unsigned              numInputEvents_ ;
@@ -56,44 +57,43 @@ namespace mu2e {
       using Name=fhicl::Name;
       using Comment=fhicl::Comment;
 
-      fhicl::Sequence<art::InputTag> inputs {
-        Name("inputs"),
+      fhicl::Sequence<art::InputTag> inputs { Name("inputs"),
           Comment("input StepPointMCCollections")
           };
 
-      fhicl::Atom<double> cutMomentumMin {
-        Name("cutMomentumMin"),
+      fhicl::Atom<double> cutMomentumMin { Name("cutMomentumMin"),
           Comment("The filter passes events if any of the step points satisties pmag>cutMomentumMin\n"
                   "By default cutMomentumMin=-inf\n"),
           -std::numeric_limits<double>::max()
           };
 
-      fhicl::Atom<double> cutMomentumMax {
-        Name("cutMomentumMax"),
+      fhicl::Atom<double> cutMomentumMax { Name("cutMomentumMax"),
           Comment("The filter passes events if any of the step points satisties pmag<cutMomentumMax\n"
                   "By default cutMomentumMax=inf\n"),
           std::numeric_limits<double>::max()
           };
 
-      fhicl::Sequence<art::InputTag> timeOffsets { Name("TimeOffsets"), Comment("Sim Particle Time Offset Maps, default: NONE")};
+      fhicl::Sequence<art::InputTag> timeOffsets { Name("TimeOffsets"), 
+	  Comment("Sim Particle Time Offset Maps, default: NONE")
+	  };
 
-      fhicl::Atom<double> tMin {
-        Name("tMin"),
+      fhicl::Atom<double> tMin { Name("tMin"),
           Comment("The filter passes events if any of the step points T>=tTMin, default:-1.e10\n") 
 	  };
 
-      fhicl::Atom<double> tMax {
-        Name("tMax"),
+      fhicl::Atom<double> tMax { Name("tMax"),
           Comment("The filter passes events if any of the step points T<tTMin, default: 1.e10\n") 
 	  };
 
-      fhicl::Atom<int> volumeId {
-        Name("volumeId"),
+      fhicl::Atom<int> volumeId { Name("volumeId"),
           Comment("if positive, defines the volume ID to look at, default: -1\n") 
 	  };
 
-      fhicl::Atom<bool> fillHistograms {
-        Name("fillHistograms"),
+      fhicl::Atom<int> pdgId { Name("pdgId"),
+          Comment("if non-zero, defines the PDG ID to use, default: 0\n") 
+	  };
+
+      fhicl::Atom<bool> fillHistograms { Name("fillHistograms"),
           Comment("if true, fill histograms, default: false\n") 
 	  };
 
@@ -119,6 +119,7 @@ namespace mu2e {
     , tMin_          (conf().tMin()          )
     , tMax_          (conf().tMax()          )
     , volumeId_      (conf().volumeId()      )
+    , pdgId_         (conf().pdgId()         )
     , fillHistograms_(conf().fillHistograms())
     , numInputEvents_ (0)
     , numPassedEvents_(0)
@@ -172,22 +173,22 @@ namespace mu2e {
     for(const auto& cn : inputTags_) {
       auto ih = event.getValidHandle<StepPointMCCollection>(cn);
       for(const auto& hit : *ih) {
-	if ((volumeId_ == 0) || (hit.volumeId() == volumeId_)) {
-	  if (hit.momentum().mag() > cutMomentumMin_ && hit.momentum().mag() < cutMomentumMax_) {
-	    double t = hit.time(); 
-	    if (tMin_ > 0) {
-					// also check the hit time, wrap around the mucrobunch
-	    
-	      t  = t+timeOffsets_.totalTimeOffset(hit.simParticle());
-	      t  = fmod(t,mbtime_);
-	    }
-
-	    if ((t >= tMin_) && (t < tMax_)) {
-	      passed = true;
-	      break;
-	    }
-	  }
-        }
+	if ((pdgId_    != 0) and (hit.simParticle()->pdgId() != pdgId_   )) continue;
+	if ((volumeId_ != 0) and (hit.volumeId()             != volumeId_)) continue;
+	double p = hit.momentum().mag();
+	if ((p <= cutMomentumMin_) or (p >= cutMomentumMax_))               continue;
+	double t = hit.time(); 
+	if (tMin_ > 0) {
+	  // also check the hit time, wrap around the mucrobunch
+	  
+	  t  = t+timeOffsets_.totalTimeOffset(hit.simParticle());
+	  t  = fmod(t,mbtime_);
+	}
+	  
+	if ((t >= tMin_) && (t < tMax_)) {
+	  passed = true;
+	  break;
+	}
       }
     }
 
