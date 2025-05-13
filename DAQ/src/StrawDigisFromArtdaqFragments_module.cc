@@ -54,6 +54,7 @@
 // #include "TRACE/tracemf.h"
 // #define TRACE_NAME "StrawDigisFromArtdaqFragments"
 
+#include "Offline/DAQ/inc/TrkPanelMap_t.hh"
 
 namespace mu2e {
   class StrawDigisFromArtdaqFragments;
@@ -590,7 +591,7 @@ void mu2e::StrawDigisFromArtdaqFragments::produce(art::Event& event) {
 // print waveforms - before moving, that invalidates the pointer...
 // make sure that the case of 2 packets prints in one line, the rest is less important
 //-----------------------------------------------------------------------------
-      print_(std::format("--- waveforms: n:{}",straw_digi_adcs->size()));
+      print_(std::format("--- waveforms: n:{}\n",straw_digi_adcs->size()));
       int iwf = 0;
       for (auto wf : *straw_digi_adcs) {
         std::string line = std::format("{:5d}",iwf);
