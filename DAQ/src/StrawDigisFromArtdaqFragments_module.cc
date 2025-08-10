@@ -55,7 +55,7 @@
 // #include "TRACE/tracemf.h"
 // #define TRACE_NAME "StrawDigisFromArtdaqFragments"
 
-#include "Offline/DAQ/inc/TrkPanelMap_t.hh"
+// #include "Offline/DAQ/inc/TrkPanelMap_t.hh"
 
 namespace mu2e {
   class StrawDigisFromArtdaqFragments;
