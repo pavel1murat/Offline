@@ -26,14 +26,12 @@
 #include "art/Framework/Principal/Handle.h"
 #include "artdaq-core-mu2e/Overlays/Decoders/TrackerDataDecoder.hh"
 #include "artdaq-core-mu2e/Overlays/FragmentType.hh"
-#include "artdaq-core-mu2e/Overlays/DTC_Packets/DTC_EventHeader.h"
 #include "artdaq-core-mu2e/Overlays/DTC_Packets/DTC_RocDataHeaderPacket.h"
 #include "artdaq-core-mu2e/Overlays/DTC_Packets/DTC_EventHeader.h"
 
 #include "Offline/DataProducts/inc/StrawId.hh"
 #include "Offline/DataProducts/inc/TrkTypes.hh"
 #include "Offline/RecoDataProducts/inc/IntensityInfoTrackerHits.hh"
-
 #include "Offline/RecoDataProducts/inc/StrawDigi.hh"
 
 #include <artdaq-core/Data/Fragment.hh>
@@ -56,7 +54,6 @@
 // #include "TRACE/tracemf.h"
 // #define TRACE_NAME "StrawDigisFromArtdaqFragments"
 
-// #include "Offline/DAQ/inc/TrkPanelMap_t.hh"
 
 namespace mu2e {
   class StrawDigisFromArtdaqFragments;
@@ -504,7 +501,7 @@ void mu2e::StrawDigisFromArtdaqFragments::produce(art::Event& event) {
 
               if (hit_data->NumADCPackets != nADCPackets_) {
                 int np = hit_data->NumADCPackets;
-                print_(std::format("ERROR: wrong NADCpackets:{} , expected:{}, STOP PROCESSING HITS\n",
+                print_(std::format("ERROR: wrong NADCpackets:{} , expected:{}, GO TO THE NEXT ROC",
                                    np,nADCPackets_));
                 break;
               }
@@ -593,7 +590,7 @@ void mu2e::StrawDigisFromArtdaqFragments::produce(art::Event& event) {
 // print waveforms - before moving, that invalidates the pointer...
 // make sure that the case of 2 packets prints in one line, the rest is less important
 //-----------------------------------------------------------------------------
-      print_(std::format("--- waveforms: n:{}\n",straw_digi_adcs->size()));
+      print_(std::format("--- waveforms: n:{}",straw_digi_adcs->size()));
       int iwf = 0;
       for (auto wf : *straw_digi_adcs) {
         std::string line = std::format("{:5d}",iwf);
