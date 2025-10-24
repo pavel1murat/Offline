@@ -28,14 +28,18 @@
 #include <memory>
 #include <map>
 
-#include "Offline/DAQ/inc/TrkPanelMap_t.hh"
+#include "Offline/ProditionsService/inc/ProditionsHandle.hh"
+#include "Offline/TrackerConditions/inc/StrawElectronics.hh"
+#include "Offline/TrackerConditions/inc/TrackerPanelMap.hh"
+
+// #include "Offline/DAQ/inc/TrkPanelMap_t.hh"
 
 namespace mu2e {
   class StrawDigiFilter : public art::EDFilter {
   public:
 
     enum { kMaxNSamples = 100 };
-    
+
     struct Config{
       using Name    = fhicl::Name;
       using Comment = fhicl::Comment;
@@ -75,7 +79,7 @@ namespace mu2e {
 
     int book_histograms(int RunNumber);
     int fill_histograms();
-    
+
     // takes unpacked waveform
     int       process_adc_waveform(float* Wf, int NSamples, WfParam_t* Wp);
     int       print_waveform      (const StrawDigiADCWaveform* Wf, WfParam_t* Wp);
@@ -83,7 +87,7 @@ namespace mu2e {
                      const std::source_location& location = std::source_location::current());
 
     int                   offlineDtcID   (int DtcID);
-    
+
   private:
     bool filter  (art::Event& ArtEvent) override;
     bool beginRun(art::Run&   Run     ) override;
@@ -93,23 +97,23 @@ namespace mu2e {
     unsigned      _minndigis;
     unsigned      _minnplanes;
     int           _debugLevel;
-    
+
     std::vector<std::string> _debugBits;
     int                      _debugBit[100];
-    
+
     bool          _noFilter;
     int           _nSamplesBL;
     float         _minPulseHeight;
     float         _minGoodPulseHeight;
     int           _minNGoodHits;
     int           _minNGoodPanels;
-    
+
     int           _ndigis;
     int           _n_good_hits[2][6];
     int           _n_good_panels;
 
-    const TrkPanelMap_t* _panel_map[36][6];   // indexing: [plane][panel]
-                                        // counters
+    //     const TrkPanelMap_t* _panel_map[36][6];   // indexing: [plane][panel]
+                                                     // counters
     unsigned      _nevt, _npass;
     const mu2e::StrawDigiCollection*            _digis;
     const mu2e::StrawDigiADCWaveformCollection* _sdwfc;
@@ -119,7 +123,12 @@ namespace mu2e {
     const art::Event* _event;
     int               _rn;
 
-    float             _tdc_bin;
+    ProditionsHandle<StrawElectronics> _stre_h;
+    const StrawElectronics*            _strawElectronics;
+    float                              _tdc_bin_ns;           // TDC bin, ns
+
+    ProditionsHandle<TrackerPanelMap> _tpm_h;
+    const TrackerPanelMap*            _trackerPanelMap;
   };
 
   StrawDigiFilter::StrawDigiFilter(const Parameters& conf)
@@ -138,13 +147,11 @@ namespace mu2e {
       _nevt              (0),
       _npass             (0)
   {
-    for (const TrkPanelMap_t* tpm = TrkPanelMap_data.begin(); tpm != TrkPanelMap_data.end(); ++tpm) {
-      int plane = tpm->plane;
-      int panel = tpm->panel;
-      _panel_map[plane][panel] = tpm;
-    }
-
-    _tdc_bin             = (5./256.*1e-3);       // TDC bin width (Richie), in us
+    // for (const TrkPanelMap_t* tpm = TrkPanelMap_data.begin(); tpm != TrkPanelMap_data.end(); ++tpm) {
+    //   int plane = tpm->plane;
+    //   int panel = tpm->panel;
+    //   _panel_map[plane][panel] = tpm;
+    // }
 //-----------------------------------------------------------------------------
 // parse debug bits
 //-----------------------------------------------------------------------------
@@ -156,7 +163,7 @@ namespace mu2e {
       key               = _debugBits[i].data();
       sscanf(key,"bit%i:%i",&index,&value);
       _debugBit[index]  = value;
-      
+
       TLOG(TLVL_DEBUG+1) << Form("... TrackerDQM: bit=%4i is set to %i\n",index,_debugBit[index]);
     }
   }
@@ -169,15 +176,15 @@ namespace mu2e {
       //            << location.function_name()
               << ": " << Message << std::endl;
   }
-  
+
 //-----------------------------------------------------------------------------
   int StrawDigiFilter::book_histograms(int RunNumber) {
     art::ServiceHandle<art::TFileService> tfs;
- 
+
     _hist.ph            = tfs->make<TH1F>("ph"  , Form("run:%06i pulse height"   ,RunNumber),  100, 0., 1000.);
     _hist.ngh           = tfs->make<TH1F>("ngh" , Form("run:%06i N(good hits"    ,RunNumber),  100, 0.,  100.);
     _hist.ngp           = tfs->make<TH1F>("ngp" , Form("run:%06i N(good panels"  ,RunNumber),   20, 0.,   20.);
-    
+
     return 0;
   }
 
@@ -189,11 +196,11 @@ namespace mu2e {
       }
     }
     _hist.ngp->Fill(_n_good_panels);
-    
+
     for(int i = 0; i < _ndigis; ++i) {
       _hist.ph->Fill(_wfp[i].ph);
     }
-                     
+
     return 0;
   }
 
@@ -202,7 +209,7 @@ namespace mu2e {
   int StrawDigiFilter::print_waveform(const StrawDigiADCWaveform* Wf, WfParam_t* Wp) {
     // print waveform
     std::string line;
-    
+
     int ns = Wf->samples().size();
     int loc = 0;
     for (int i=0; i<ns; i++) {
@@ -217,7 +224,7 @@ namespace mu2e {
     if (loc > 0) printf("%s",line.data());
     return 0;
   }
-  
+
 //-----------------------------------------------------------------------------
   int StrawDigiFilter::process_adc_waveform(float* Wf, int NSamples, WfParam_t* Wp) {
 //-----------------------------------------------------------------------------
@@ -265,7 +272,7 @@ namespace mu2e {
 //-----------------------------------------------------------------------------
     if (Wp->q < 100) {
       TLOG(TLVL_DEBUG+1) << "event=" << _event->run() << ":"
-                         << _event->subRun() << ":" << _event->event() 
+                         << _event->subRun() << ":" << _event->event()
                          << " Q=" << Wp->q;
     }
     return 0;
@@ -273,10 +280,18 @@ namespace mu2e {
 
   bool StrawDigiFilter::beginRun(art::Run& ArtRun) {
     _rn = ArtRun.run();
+
+    art::EventID eid(_rn, 1, 1);
+    _strawElectronics = &_stre_h.get(eid);
+    _tdc_bin_ns = _strawElectronics->tdcLSB();      // 5./256 , ns
+    // _tdc_bin             = (5./256.*1e-3);       // TDC bin width (Richie), in us
+    ProditionsHandle<TrackerPanelMap> tpm_h;
+    _trackerPanelMap = &tpm_h.get(eid);
+
     book_histograms(_rn);
     return true;
   }
-  
+
 //-----------------------------------------------------------------------------
   bool StrawDigiFilter::endRun(art::Run& run) {
     if(_debugLevel > 0){
@@ -289,7 +304,7 @@ namespace mu2e {
   bool StrawDigiFilter::filter(art::Event& ArtEvent) {
 
     _event         = &ArtEvent;         // should always be the first line
-    
+
     if (_debugLevel > 0) print_("-- START");
 
     ++_nevt;
@@ -298,8 +313,8 @@ namespace mu2e {
     _n_good_panels = 0;
     _wfp.clear();
 
-    if (_debugLevel > 0) 
-    
+    if (_debugLevel > 0)
+
     for (int plane=0; plane<2; plane++) {
       for (int j=0; j<6; j++) {
         _n_good_hits[plane][j] = 0;
@@ -336,10 +351,19 @@ namespace mu2e {
     for(int i = 0; i<_ndigis; ++i) {
       const mu2e::StrawDigi* sd = &_digis->at(i);
       uint16_t     plane = sd->strawId().plane();  // this is the GEO ID of the panel
-      uint16_t     panel = sd->strawId().panel();  // this is the GEO ID of the panel
-      const TrkPanelMap_t* tpm = _panel_map[plane][panel];
+      uint16_t     panel = sd->strawId().panel();        // this is the GEO ID of the panel
+      const TrkPanelMap::Row* tpm;
+      tpm = _trackerPanelMap->panel_map_by_online_ind(plane,panel);
+      if (tpm == nullptr) {
 //-----------------------------------------------------------------------------
-// unpacking: 
+// either DTC ID or link ID are corrupted. Haven't seen that so far, switch to the next ROC anyway
+//-----------------------------------------------------------------------------
+        print_(std::format("ERROR: either plane:{} or panel:{} is corrupted, skip ROC data\n",
+                           plane,panel));
+        continue;
+      }
+//-----------------------------------------------------------------------------
+// unpacking:
 //-----------------------------------------------------------------------------
       const mu2e::StrawDigiADCWaveform* wf = &_sdwfc->at(i);
       int ns = wf->samples().size();
@@ -352,7 +376,7 @@ namespace mu2e {
       for (int i=0; i<ns; i++) {
         wf_data[i] = wf->samples().at(i);
       }
-      
+
       process_adc_waveform(wf_data,ns,&wfpar);
 
       _wfp.push_back(wfpar);
@@ -360,8 +384,8 @@ namespace mu2e {
       if (_debugLevel) {
         StrawId sid = sd->strawId();
         StrawDigiFlagDetail::mask_type /*uint8_t*/ sd_flag = *((StrawDigiFlagDetail::mask_type*) &sd->digiFlag());
-        float t0        = sd->TDC()[0]*_tdc_bin*1e3;
-        float t1        = sd->TDC()[1]*_tdc_bin*1e3;
+        float t0        = sd->TDC()[0]*_tdc_bin_ns;  // in ns
+        float t1        = sd->TDC()[1]*_tdc_bin_ns;
 
         int print_it = 0;
         if      (_debugLevel & _debugBit[0]) {                                     print_it = 1; }
@@ -373,14 +397,14 @@ namespace mu2e {
             header_printed = 1;
           }
           std::cout << std::format("0x{:04x} {:5}   {:4}  {:4}    MN{:03d} {:3} {:8.1f} {:8.1f} 0x{:02x}",
-                                   sid.asUint16(), sid.station(),sid.plane(),sid.panel(),tpm->mnid,sid.straw(),t0,t1,sd_flag);
+                                   sid.asUint16(), sid.station(),sid.plane(),sid.panel(),tpm->mnid(),sid.straw(),t0,t1,sd_flag);
           print_waveform(wf,&wfpar);
           std::cout << std::format(" {:2d} {:8.3f} {:8.3f} ",wfpar.fs,wfpar.ph,wfpar.bl) << std::endl;
         }
       }
 
       if (wfpar.ph > _minGoodPulseHeight) {
-        _n_good_hits[tpm->plane][tpm->panel]++;
+        _n_good_hits[tpm->uniquePlane()][tpm->panel()]++;
       }
     }
 
@@ -392,7 +416,7 @@ namespace mu2e {
       }
       std::cout << std::endl;
     }
-    
+
     fill_histograms();
 
     if (_debugLevel > 0) print_(std::format("-- END: n_good_panels:{}",_n_good_panels));
