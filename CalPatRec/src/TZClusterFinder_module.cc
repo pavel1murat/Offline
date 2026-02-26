@@ -498,6 +498,12 @@ namespace mu2e {
     for (int i=(int)_f.cHits.size()-1; i>=0; i--) {
       for (size_t j=0; j<_f.cHits[i].plnHits.size(); j++) {
         if ( _f.cHits[i].plnHits[j].hIsUsed != 0 ) {continue;}
+        int ind = _f.cHits[i].plnHits[j].hIndex;
+        const ComboHit* ch = &_data._chColl->at(ind);
+//-----------------------------------------------------------------------------
+// PM to deal with the noise, require the seed hit charge to be above some minimum
+//-----------------------------------------------------------------------------
+        if (ch->energyDep() < 0.0005) continue;
         setSeed(i,j);
         // now we find points around the seed
         for (int k=i; k>=0; k--) {
@@ -725,7 +731,10 @@ namespace mu2e {
     const ComboHit*    hit;
 
     float  ccTime    = 0.0;
-    int    ncc       = _data._ccColl->size();
+    // P.M. : the code shold work in the absence of the calorimeter
+    int    ncc       = 0;
+    if (_data._ccColl != nullptr) ncc =  _data._ccColl->size();
+    
     int    nchunks   = _f.chunks.size();
     int    addedToTC = 0;
 
@@ -782,14 +791,21 @@ namespace mu2e {
   //-----------------------------------------------------------------------------
   void TZClusterFinder::refineChunks() {
 
+    int n_edep_hits = 0;
+    
     for (size_t i=0; i<_f.chunks.size(); i++) {
       // first continue on chunks that are already not saved
       if (_f.chunks[i].nrgSelection == 0) {continue;}
       if ((int)_f.chunks[i].nStrawHits < _clusterThresh) {continue;}
       for (size_t j=0; j<_f.chunks[i].hIndices.size(); j++) {
+        int loc = _f.chunks[i].hIndices[j];
+        const ComboHit* ch = &_data._chColl->at(loc);
+        if (ch->energyDep() > 0.0005) n_edep_hits++;
         // needs development
       }
       //  set _f.chunks[i].goodCluster = false or true here based on result of logic you put above .. needs development
+
+      if (n_edep_hits < 2) _f.chunks[i].goodCluster = false;
     }
 
   }
@@ -848,7 +864,8 @@ namespace mu2e {
       for (size_t j=0; j<_f.chunks[i].hIndices.size(); j++) {
         _f._clusterInfo._strawHitIdxs.push_back(StrawHitIndex(_f.chunks[i].hIndices[j]));
       }
-      _f._clusterInfo._t0 = TrkT0(_f.chunks[i].fitter.y0(), 0.);
+      // P.Murat   _f._clusterInfo._t0 = TrkT0(_f.chunks[i].fitter.y0(), 0.);
+      _f._clusterInfo._t0 = TrkT0(_f.chunks[i].avgTime, 0.);
       int caloIdx = _f.chunks[i].caloIndex;
       if (caloIdx != -1) {
         _f._clusterInfo._caloCluster = art::Ptr<mu2e::CaloCluster>(_ccHandle, caloIdx);
