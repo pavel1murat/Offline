@@ -11,6 +11,7 @@
 
 #include "Offline/DbTables/inc/CalSourceEnergyCalib.hh"
 #include "Offline/DbTables/inc/CalCosmicEnergyCalib.hh"
+#include "Offline/DbTables/inc/CalCosmicEnergyCalibInfo.hh"
 #include "Offline/DbTables/inc/CalLaserEnergyCalib.hh"
 #include "Offline/DbTables/inc/CalLaserTimeCalib.hh"
 #include "Offline/DbTables/inc/CalLaserRuns.hh"
@@ -25,6 +26,7 @@
 #include "Offline/DbTables/inc/TrkDelayPanel.hh"
 #include "Offline/DbTables/inc/TrkDelayRStraw.hh"
 #include "Offline/DbTables/inc/TrkElementStatus.hh"
+#include "Offline/DbTables/inc/TrkPanelMap.hh"
 #include "Offline/DbTables/inc/TrkPreampStraw.hh"
 #include "Offline/DbTables/inc/TstCalib1.hh"
 #include "Offline/DbTables/inc/TstCalib2.hh"
@@ -64,6 +66,8 @@ mu2e::DbTable::ptr_t mu2e::DbTableFactory::newTable(std::string const& name) {
     return std::shared_ptr<mu2e::DbTable>(new mu2e::TrkAlignPanelSim());
   } else if (name == "TrkAlignStrawSim") {
     return std::shared_ptr<mu2e::DbTable>(new mu2e::TrkAlignStrawSim());
+  } else if (name == "TrkPanelMap") {
+    return std::shared_ptr<mu2e::DbTable>(new mu2e::TrkPanelMap());
   } else if (name == "TrkPlaneStatus") {
     return std::shared_ptr<mu2e::DbTable>(new mu2e::TrkPlaneStatus());
   } else if (name == "TrkPanelStatus") {
@@ -94,6 +98,8 @@ mu2e::DbTable::ptr_t mu2e::DbTableFactory::newTable(std::string const& name) {
     return std::shared_ptr<mu2e::DbTable>(new mu2e::CalSourceEnergyCalib());
   } else if (name=="CalCosmicEnergyCalib") {
     return std::shared_ptr<mu2e::DbTable>(new mu2e::CalCosmicEnergyCalib());
+  } else if (name=="CalCosmicEnergyCalibInfo") {
+    return std::shared_ptr<mu2e::DbTable>(new mu2e::CalCosmicEnergyCalibInfo());
   } else if (name=="CalLaserEnergyCalib") {
     return std::shared_ptr<mu2e::DbTable>(new mu2e::CalLaserEnergyCalib());
   } else if (name=="CalLaserTimeCalib") {
