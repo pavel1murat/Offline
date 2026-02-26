@@ -7,7 +7,7 @@ cet_make_library(
       src/MakeCrvSiPMCharges.cc
       src/MakeCrvWaveforms.cc
     LIBRARIES PUBLIC
-      
+
       Offline::MCDataProducts
       Offline::RecoDataProducts
 )
@@ -17,7 +17,7 @@ cet_build_plugin(CrvCoincidenceClusterMatchMC art::module
     LIBRARIES REG
       art_root_io::TFileService_service
       Offline::CRVResponse
-      
+
       Offline::ConditionsService
       Offline::CosmicRayShieldGeom
       Offline::DataProducts
@@ -30,7 +30,7 @@ cet_build_plugin(CrvDigitizer art::module
     REG_SOURCE src/CrvDigitizer_module.cc
     LIBRARIES REG
       Offline::CRVResponse
-      
+
       Offline::CosmicRayShieldGeom
       Offline::CRVConditions
       Offline::DAQConditions
@@ -45,7 +45,7 @@ cet_build_plugin(CrvPhotonGenerator art::module
     REG_SOURCE src/CrvPhotonGenerator_module.cc
     LIBRARIES REG
       Offline::CRVResponse
-      
+
       Offline::ConditionsService
       Offline::ConfigTools
       Offline::CosmicRayShieldGeom
@@ -63,7 +63,7 @@ cet_build_plugin(CrvPlot art::module
     LIBRARIES REG
       art_root_io::TFileService_service
       Offline::CRVResponse
-      
+
       Offline::ConditionsService
       Offline::CosmicRayShieldGeom
       Offline::CRVConditions
@@ -78,7 +78,7 @@ cet_build_plugin(CrvSiPMChargeGenerator art::module
     REG_SOURCE src/CrvSiPMChargeGenerator_module.cc
     LIBRARIES REG
       Offline::CRVResponse
-      
+
       Offline::ConditionsService
       Offline::ConfigTools
       Offline::CosmicRayShieldGeom
@@ -95,7 +95,7 @@ cet_build_plugin(CrvStepsFromStepPointMCs art::module
     LIBRARIES REG
       art_root_io::TFileService_service
       Offline::CRVResponse
-      
+
       Offline::DataProducts
       Offline::GeometryService
       Offline::GlobalConstantsService
@@ -108,7 +108,7 @@ cet_build_plugin(CRVTest art::module
     LIBRARIES REG
       art_root_io::TFileService_service
       Offline::CRVResponse
-      
+
       Offline::CosmicRayShieldGeom
       Offline::DataProducts
       Offline::GeometryService
@@ -120,7 +120,7 @@ cet_build_plugin(CrvWaveformsGenerator art::module
     REG_SOURCE src/CrvWaveformsGenerator_module.cc
     LIBRARIES REG
       Offline::CRVResponse
-      
+
       Offline::ConfigTools
       Offline::CosmicRayShieldGeom
       Offline::CRVConditions
@@ -143,7 +143,7 @@ cet_build_plugin(MakeCrvCoincidenceClusterMCAssns art::module
     REG_SOURCE src/MakeCrvCoincidenceClusterMCAssns_module.cc
     LIBRARIES REG
       Offline::CRVResponse
-      
+
       Offline::MCDataProducts
 )
 
@@ -151,7 +151,6 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/prolog.fcl ${CURRENT_BINARY_DIR} 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/epilog_extracted.fcl	  ${CURRENT_BINARY_DIR} fcl/epilog_extracted.fcl	 )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/epilog_extracted_v02.fcl   ${CURRENT_BINARY_DIR} fcl/epilog_extracted_v02.fcl )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/epilog_extracted_v03.fcl   ${CURRENT_BINARY_DIR} fcl/epilog_extracted_v03.fcl )
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/prolog_extracted_v01.fcl   ${CURRENT_BINARY_DIR} fcl/prolog_extracted_v01.fcl )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/prolog_v03.fcl		  ${CURRENT_BINARY_DIR} fcl/prolog_v03.fcl		 )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/prolog_v05.fcl		  ${CURRENT_BINARY_DIR} fcl/prolog_v05.fcl		 )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/prolog_v06.fcl		  ${CURRENT_BINARY_DIR} fcl/prolog_v06.fcl		 )
@@ -160,9 +159,12 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/prolog_v08.fcl		  ${CURRENT_BINAR
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/prolog_v09.fcl		  ${CURRENT_BINARY_DIR} fcl/prolog_v09.fcl		 )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/prolog_v10.fcl		  ${CURRENT_BINARY_DIR} fcl/prolog_v10.fcl		 )
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/prolog_v11.fcl		  ${CURRENT_BINARY_DIR} fcl/prolog_v11.fcl		 )
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/singlePEWaveform.txt	  ${CURRENT_BINARY_DIR} fcl/singlePEWaveform.txt	 )
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/singlePEWaveform_v2.txt	  ${CURRENT_BINARY_DIR} fcl/singlePEWaveform_v2.txt	 )
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/singlePEWaveform_v3.txt    ${CURRENT_BINARY_DIR} fcl/singlePEWaveform_v3.txt      )
+
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/data/singlePEWaveform.txt	  ${CURRENT_BINARY_DIR} data/singlePEWaveform.txt	 )
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/data/singlePEWaveform_v2.txt	  ${CURRENT_BINARY_DIR} data/singlePEWaveform_v2.txt	 )
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/data/singlePEWaveform_v3.txt   ${CURRENT_BINARY_DIR} data/singlePEWaveform_v3.txt      )
+
+install(DIRECTORY data DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/Offline/CRVResponse)
 
 install_source(SUBDIRS src)
 install_headers(USE_PROJECT_NAME SUBDIRS inc)

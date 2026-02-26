@@ -2,13 +2,18 @@
 #include <limits>
 namespace mu2e {
 
+  const double KalSeed::_regrowtol(1e-3); // 1 ps minimum for regrown segments
+
   KalSeed::LHPTPtr KalSeed::loopHelixFitTrajectory() const {
     if(loopHelixFit() && segments().size() > 0){
       // initialize the piecewise trajectory with the front segment
       LHPTPtr ptraj(new KalSeed::LHPT(segments().front().loopHelix()));
       auto iseg = segments().begin(); ++iseg;
       while(iseg != segments().end()){
-        if(!iseg->timeRange().null())ptraj->append(iseg->loopHelix());
+        if(iseg->timeRange().range() > _regrowtol ){
+          auto trajptr = std::make_shared<KinKal::LoopHelix>(iseg->loopHelix());
+          ptraj->add(trajptr); // note this call resolves the phi0 ambiguity
+        }
         ++iseg;
       }
       return ptraj;
@@ -22,7 +27,10 @@ namespace mu2e {
       CHPTPtr ptraj(new KalSeed::CHPT(segments().front().centralHelix()));
       auto iseg = segments().begin(); ++iseg;
       while(iseg != segments().end()){
-        if(!iseg->timeRange().null())ptraj->append(iseg->centralHelix());
+        if(iseg->timeRange().range() > _regrowtol ){
+          auto trajptr = std::make_shared<KinKal::CentralHelix>(iseg->centralHelix());
+          ptraj->add(trajptr);
+        }
         ++iseg;
       }
       return ptraj;
@@ -36,7 +44,10 @@ namespace mu2e {
       KLPTPtr ptraj(new KalSeed::KLPT(segments().front().kinematicLine()));
       auto iseg = segments().begin(); ++iseg;
       while(iseg != segments().end()){
-        if(!iseg->timeRange().null())ptraj->append(iseg->kinematicLine());
+        if(iseg->timeRange().range() > _regrowtol ){
+          auto trajptr = std::make_shared<KinKal::KinematicLine>(iseg->kinematicLine());
+          ptraj->add(trajptr);
+        }
         ++iseg;
       }
       return ptraj;
@@ -52,18 +63,15 @@ namespace mu2e {
     return nactive;
   }
 
-  std::vector<KalIntersection>::const_iterator KalSeed::intersection(SurfaceId const& surfid) const{
-    auto retval = _inters.end();
+  KalSeed::InterIterCol KalSeed::intersections(SurfaceId const& surfid) const{
+    KalSeed::InterIterCol retval;
     for(auto iinter = _inters.begin(); iinter != _inters.end(); ++iinter) {
-      if(iinter->surfid_ == surfid){
-        retval = iinter;
-        break;
-      }
+      if(iinter->surfid_ == surfid) retval.push_back(iinter);
     }
     return retval;
   }
 
-  std::vector<KalSegment>::const_iterator KalSeed::nearestSeg(double time)  const {
+  std::vector<KalSegment>::const_iterator KalSeed::nearestSegment(double time)  const {
     auto retval = segments().end();
     float dmin(std::numeric_limits<float>::max());
     for(auto ikseg = segments().begin(); ikseg !=segments().end(); ikseg++) {
@@ -98,20 +106,6 @@ namespace mu2e {
     }
     return retval;
   }
-
-  std::vector<KalSegment>::const_iterator KalSeed::nearestSegment(float time)  const {
-    auto retval = segments().end();
-    double tmin(std::numeric_limits<float>::max());
-    for(auto ikseg = segments().begin(); ikseg !=segments().end(); ikseg++) {
-      double dt = fabs(time - 0.5*(ikseg->tmin()+ikseg->tmax()));
-      if(dt < tmin){
-        tmin = dt;
-        retval = ikseg;
-      }
-    }
-    return retval;
-  }
-
   std::vector<KalSegment>::const_iterator KalSeed::nearestSegment(const XYZVectorF& pos)  const {
     auto retval = segments().end();
     double dmin(std::numeric_limits<float>::max());
@@ -125,74 +119,42 @@ namespace mu2e {
     return retval;
   }
 
-  double KalSeed::t0Val() const {
-    if(segments().size() <= 0) throw cet::exception("RECO")<<"mu2e::KalSeed: no segments" << std::endl;
-// find the segment nearest z=0.  If there's one segment, we are done
-    auto iseg = segments().begin();
-    if(_segments.size() > 1){
-      auto pvel = iseg->state().velocity();
-      double vz = pvel.Z(); // to a good approximation, B is along Z
-      auto pref = iseg->position3();
-      double zmin = pref.Z() + vz*(iseg->tmin()-iseg->tref());
-      double zmax = pref.Z() + vz*(iseg->tmax()-iseg->tref());
-      if(zmin > 0.0 || zmax < 0.0){
-        double mindz = std::min(fabs(zmin), fabs(zmax));
-        // find the segment closest to z=0
-        auto jseg = ++iseg;
-        while(jseg != segments().end()) {
-          pvel = jseg->state().velocity();
-          vz = pvel.Z();
-          pref = jseg->position3();
-          zmin = pref.Z() + vz*(jseg->tmin()-jseg->tref());
-          zmax = pref.Z() + vz*(jseg->tmax()-jseg->tref());
-          double dz = std::min(fabs(zmin),fabs(zmax));
-          if(zmin < 0.0 && zmax > 0.0){
-            iseg = jseg;
-            break;
-          } else if(dz < mindz){
-            iseg = jseg;
-            mindz = dz;
-          }
-          ++jseg;
-        }
-      }
+
+  std::vector<KalSegment>::const_iterator KalSeed::t0Segment(double& t0) const {
+    if(segments().size() == 0) throw cet::exception("RECO")<<"mu2e::KalSeed: no segments" << std::endl;
+// start with the middle
+    t0 = timeRange().mid();
+    auto iseg = nearestSegment(t0);
+    t0 = iseg->t0Val(_status);
+    auto oldseg = segments().end();
+    unsigned ntest(0);
+    while((!iseg->timeRange().inRange(t0)) && iseg != oldseg && ntest < segments().size()){
+      oldseg = iseg;
+      t0 = iseg->t0Val(_status);
+      iseg = nearestSegment(t0);
+      ++ntest;
     }
-    return iseg->t0Val();
+    return iseg;
   }
 
+  double KalSeed::t0Val() const {
+    double t0;
+    t0Segment(t0);
+    return t0;
+  }
+
+  double KalSeed::t0Var() const {
+    double t0;
+    auto segiter = t0Segment(t0);
+    return segiter->t0Var(_status);
+  }
+
+  // deprecated legacy functions
+
   HitT0 KalSeed::t0() const {
-    if(segments().size() <= 0) throw cet::exception("RECO")<<"mu2e::KalSeed: no segments" << std::endl;
-// find the segment nearest z=0.  If there's one segment, we are done
-    auto iseg = segments().begin();
-    if(_segments.size() > 1){
-      auto pvel = iseg->state().velocity();
-      double vz = pvel.Z(); // to a good approximation, B is along Z
-      auto pref = iseg->position3();
-      double zmin = pref.Z() + vz*(iseg->tmin()-iseg->tref());
-      double zmax = pref.Z() + vz*(iseg->tmax()-iseg->tref());
-      if(zmin > 0.0 || zmax < 0.0){
-        double mindz = std::min(fabs(zmin), fabs(zmax));
-        // find the segment closest to z=0
-        auto jseg = ++iseg;
-        while(jseg != segments().end()) {
-          pvel = jseg->state().velocity();
-          vz = pvel.Z();
-          pref = jseg->position3();
-          zmin = pref.Z() + vz*(jseg->tmin()-jseg->tref());
-          zmax = pref.Z() + vz*(jseg->tmax()-jseg->tref());
-          double dz = std::min(fabs(zmin),fabs(zmax));
-          if(zmin < 0.0 && zmax > 0.0){
-            iseg = jseg;
-            break;
-          } else if(dz < mindz){
-            iseg = jseg;
-            mindz = dz;
-          }
-          ++jseg;
-        }
-      }
-    }
-    return HitT0(iseg->t0Val(),1.0); //FIXME
+    double t0;
+    t0Segment(t0);
+    return HitT0(t0,-1.0);
   }
 }
 

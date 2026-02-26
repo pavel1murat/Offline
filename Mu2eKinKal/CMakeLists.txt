@@ -18,11 +18,12 @@ cet_make_library(
       src/WireHitState.cc
     LIBRARIES PUBLIC
       BLAS::BLAS
-      KinKal_Detector
-      KinKal_Fit
-      KinKal_General
-      KinKal_MatEnv
-      KinKal_Trajectory
+      KinKal::General
+      KinKal::MatEnv
+      KinKal::Geometry
+      KinKal::Detector
+      KinKal::Trajectory
+      KinKal::Fit
       Offline::BFieldGeom
       Offline::CalorimeterGeom
       Offline::ConfigTools
@@ -40,24 +41,16 @@ cet_build_plugin(CentralHelixFit art::module
     REG_SOURCE src/CentralHelixFit_module.cc
     LIBRARIES REG
       Offline::Mu2eKinKal
-      
+
       Offline::GeneralUtilities
       Offline::TrkReco
-)
-
-cet_build_plugin(CosmicTrackSeedFilter art::module
-    REG_SOURCE src/CosmicTrackSeedFilter_module.cc
-    LIBRARIES REG
-      Offline::Mu2eKinKal
-      
-      Offline::RecoDataProducts
 )
 
 cet_build_plugin(KinematicLineFit art::module
     REG_SOURCE src/KinematicLineFit_module.cc
     LIBRARIES REG
       Offline::Mu2eKinKal
-      
+
       Offline::BFieldGeom
       Offline::CalorimeterGeom
       Offline::DataProducts
@@ -77,9 +70,21 @@ cet_build_plugin(LoopHelixFit art::module
     LIBRARIES REG
       Offline::Mu2eKinKal
       Offline::TrkReco
-      
+
+)
+cet_build_plugin(RegrowLoopHelix art::module
+  REG_SOURCE src/RegrowLoopHelix_module.cc
+      LIBRARIES REG
+      Offline::Mu2eKinKal
+      Offline::TrkReco
 )
 
+cet_build_plugin(RegrowKinematicLine art::module
+  REG_SOURCE src/RegrowKinematicLine_module.cc
+      LIBRARIES REG
+      Offline::Mu2eKinKal
+      Offline::TrkReco
+)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/data/TrainBkgFinal.dat   ${CURRENT_BINARY_DIR} data/TrainBkgFinal.dat   COPYONLY)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/data/TrainBkgSeed.dat   ${CURRENT_BINARY_DIR} data/TrainBkgSeed.dat   COPYONLY)

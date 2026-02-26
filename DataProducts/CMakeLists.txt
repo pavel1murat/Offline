@@ -9,9 +9,11 @@ cet_make_library(
       src/GenVector.cc
       src/PDGCode.cc
       src/STMChannel.cc
+      src/StrawEnd.cc
       src/StrawId.cc
       src/StrawIdMask.cc
       src/StrawStatus.cc
+      src/SurfaceId.cc
       src/VirtualDetectorId.cc
     LIBRARIES PUBLIC
       ROOT::MathMore

@@ -15,9 +15,11 @@ namespace mu2e {
   class Straw;
   class StrawResponse;
   namespace Mu2eKinKal{
-    enum Dimension { dresid=0, tresid=1};  // residual dimensions
+    enum Dimension { dresid=0, tresid=1, lresid=2};  // residual dimensions
     // function to turn a StrawHit into a SensorLine object
     KinKal::SensorLine hitLine(ComboHit const& ch, Straw const& straw,StrawResponse const& strawresponse);
+    // function to turn a Straw into a SensorLine object, used to compute material interactions
+    KinKal::SensorLine strawLine(Straw const& straw,double time);
     // test whether a point is inside the detector
     bool inDetector(KinKal::VEC3 const& point);
     // returns phi angle from 0 to pi/2, where 0 is in B field direction

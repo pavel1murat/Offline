@@ -40,11 +40,15 @@ namespace mu2e {
       bitnames[std::string("KalFinalFit")]        = bit_to_mask(KFF);
       bitnames[std::string("TrkPatRecHelix")]     = bit_to_mask(TPRHelix);
       bitnames[std::string("CalPatRecHelix")]     = bit_to_mask(CPRHelix);
+      bitnames[std::string("AgnosticHelix")]      = bit_to_mask(APRHelix);
+      bitnames[std::string("RobustMultiHelix")]   = bit_to_mask(MPRHelix);
       bitnames[std::string("Straight")]           = bit_to_mask(Straight);
       bitnames[std::string("KKLoopHelix")]        = bit_to_mask(KKLoopHelix);
       bitnames[std::string("KKCentralHelix")]     = bit_to_mask(KKCentralHelix);
       bitnames[std::string("KKLine")]             = bit_to_mask(KKLine);
       bitnames[std::string("MCSeed")]             = bit_to_mask(MCSeed);
+      bitnames[std::string("AmbiguousFitDir")]    = bit_to_mask(AmbFitDir);
+      bitnames[std::string("Regrown")]            = bit_to_mask(Regrown);
     }
     return bitnames;
   }

@@ -40,20 +40,21 @@ public:
   struct Config {
     using Name = fhicl::Name;
     using Comment = fhicl::Comment;
-    fhicl::Atom<int> debug{Name("debugLevel"), Comment("set to 1 for debug prints"), 0};
-    fhicl::Atom<int> minnsh{Name("minNStrawHits"), Comment("minimum number of straw hits "), 5};
-    fhicl::Atom<int> minnpanels{Name("minNPanels"), Comment("minimum number of panels "), 0};
+    fhicl::Atom<int> debug{Name("debugLevel"), Comment("set to 1 for debug prints")};
+    fhicl::Atom<int> minnsh{Name("minNStrawHits"), Comment("minimum number of straw hits ")};
+    fhicl::Atom<int> minnpanels{Name("minNPanels"), Comment("minimum number of panels ")};
     fhicl::OptionalAtom<int> maxnsh{Name("maxNStrawHits"), Comment("maximum number of straw hits ")};
-    fhicl::Atom<int> timewindow{Name("TimeWindow"), Comment("Width of time window in ns"), 100};
-    fhicl::Atom<bool> usetimewindow{Name("useTimeWindow"), Comment("Use timewindow cut"), false};
-    fhicl::Atom<int> timestep{Name("TimeStep"), Comment("Width of timestep between hits in ns"), 20};
+    fhicl::Atom<int> timewindow{Name("TimeWindow"), Comment("Width of time window in ns")};
+    fhicl::Atom<bool> usetimewindow{Name("useTimeWindow"), Comment("Use timewindow cut")};
+    fhicl::Atom<int> timestep{Name("TimeStep"), Comment("Width of timestep between hits in ns")};
     fhicl::Atom<bool> usetimestep{Name("useTimeStep"), Comment("Use timestep cut"), true};
     fhicl::Atom<bool> testflag{Name("TestFlag"), Comment("Test StrawHitFlags")};
-    fhicl::Atom<bool> useonepanel{Name("UseOnlyOnePanel"), Comment("Use hits from one panel only"), false};
-    fhicl::Atom<bool> useoneplane{Name("UseOnlyOnePlane"), Comment("Use hits from one plane only"), false};
+    fhicl::Atom<bool> useonepanel{Name("UseOnlyOnePanel"), Comment("Use hits from one panel only")};
+    fhicl::Atom<bool> useoneplane{Name("UseOnlyOnePlane"), Comment("Use hits from one plane only")};
     fhicl::Atom<art::InputTag> chToken{Name("ComboHitCollection"), Comment("tag for combo hit collection")};
-    fhicl::Sequence<std::string> hsel{Name("HitSelectionBits"), Comment("Required flags if TestFlag is set"), std::vector<std::string>{"EnergySelection", "TimeSelection"}};
-    fhicl::Sequence<std::string> hbkg{Name("HitBackgroundBits"), Comment("Excluded flags if TestFlag is set"), std::vector<std::string>{}};
+    fhicl::Sequence<std::string> hsel{Name("HitSelectionBits"), Comment("Required flags if TestFlag is set")};
+    fhicl::Sequence<std::string> hbkg{Name("HitBackgroundBits"), Comment("Excluded flags if TestFlag is set")};
+    fhicl::Sequence<std::string> hnotnoise{Name("HitNonNoiseSelectionBits"), Comment("Require at least one hit with these flags")};
   };
   typedef art::EDProducer::Table<Config> Parameters;
   explicit SimpleTimeCluster(const Parameters& conf);
@@ -76,7 +77,7 @@ private:
   bool _useoneplane;
   art::InputTag _chToken;
   const ComboHitCollection* _chcol;
-  StrawHitFlag _hsel, _hbkg;
+  StrawHitFlag _hsel, _hbkg, _hnotnoise;
 
   void findClusters(TimeClusterCollection& tccol);
   bool goodHit(const StrawHitFlag& flag) const;
@@ -98,7 +99,8 @@ SimpleTimeCluster::SimpleTimeCluster(const Parameters& conf) :
     _useoneplane(conf().useoneplane()),
     _chToken(conf().chToken()),
     _hsel(conf().hsel()),
-    _hbkg(conf().hbkg())
+    _hbkg(conf().hbkg()),
+    _hnotnoise(conf().hnotnoise())
 {
   _hasmaxnsh = conf().maxnsh(_maxnsh);
   produces<TimeClusterCollection>();
@@ -154,6 +156,7 @@ void SimpleTimeCluster::findClusters(TimeClusterCollection& tccol) {
   int count = 0;
   for (size_t startIndex = 0; startIndex < ordChCol.size(); startIndex++) {
     count = ordChCol[startIndex].nStrawHits();
+    bool hasNonNoise = false;
     if (endIndex >= ordChCol.size())
       break;
     if (startIndex < endIndex)
@@ -162,12 +165,16 @@ void SimpleTimeCluster::findClusters(TimeClusterCollection& tccol) {
       endIndex = startIndex;
     double startTime = ordChCol[startIndex].correctedTime();
     double endTime = -1;
+    if (ordChCol[endIndex].flag().hasAllProperties(_hnotnoise))
+      hasNonNoise = true;
     while (true) {
       endIndex++;
       if (endIndex >= ordChCol.size())
         break;
       endTime = ordChCol[endIndex].correctedTime();
       count += ordChCol[endIndex].nStrawHits();
+      if (ordChCol[endIndex].flag().hasAllProperties(_hnotnoise))
+        hasNonNoise = true;
       if (_usetimeStep && endTime - ordChCol[endIndex - 1].correctedTime() > _timeStep)
         break;
       if (endTime - startTime < 0)
@@ -183,7 +190,7 @@ void SimpleTimeCluster::findClusters(TimeClusterCollection& tccol) {
       continue;
     if (!_usetimeWindow && endTime - startTime > _timeWindow)
       continue;
-    if (count >= _minnsh) {
+    if (count >= _minnsh && hasNonNoise) {
       peakStart.push_back(startIndex);
       peakEnd.push_back(endIndex);
       peakHits.push_back(count);

@@ -76,6 +76,13 @@ include="Math/Vector3D.h, Math/Vector4D.h, CLHEP/Vector/LorentzVector.h, CLHEP/V
 <class name="mu2e::PtrStepPointMCVectorCollection"/>
 <class name="art::Wrapper<mu2e::PtrStepPointMCVectorCollection>"/>
 
+<class name="mu2e::SurfaceStep"/>
+<class name="mu2e::SurfaceStepCollection"/>
+<class name="art::Ptr<mu2e::SurfaceStep>"/>
+<class name="art::Wrapper<mu2e::SurfaceStep>"/>
+<class name="art::Wrapper<mu2e::SurfaceStepCollection>"/>
+<class name="art::Wrapper<art::Ptr<mu2e::SurfaceStep>>"/>
+
 <class name="mu2e::MCTrajectoryPoint"/>
 <class name="std::vector<mu2e::MCTrajectoryPoint>"/>
 <class name="mu2e::MCTrajectory"/>
@@ -90,6 +97,14 @@ include="Math/Vector3D.h, Math/Vector4D.h, CLHEP/Vector/LorentzVector.h, CLHEP/V
 
 <class name="mu2e::SimParticleRemapping" persistent="false"/>
 <class name="art::Wrapper<mu2e::SimParticleRemapping>"/>
+
+<class name="mu2e::ScorerSummary"/>
+<class name="mu2e::ScorerSummaryCollection"/>
+<class name="art::Wrapper<mu2e::ScorerSummaryCollection>"/>
+
+<class name="mu2e::ScorerConfigSummary"/>
+<class name="mu2e::ScorerConfigSummaryCollection"/>
+<class name="art::Wrapper<mu2e::ScorerConfigSummaryCollection>"/>
 
 <!--  ********* resampling ********* -->
 <class name="mu2e::SimTimeOffset"/>
@@ -108,6 +123,8 @@ include="Math/Vector3D.h, Math/Vector4D.h, CLHEP/Vector/LorentzVector.h, CLHEP/V
 
 <class name="mu2e::EventWeight"/>
 <class name="art::Wrapper<mu2e::EventWeight>"/>
+<class name="mu2e::SumOfWeights"/>
+<class name="art::Wrapper<mu2e::SumOfWeights>"/>
 
 <class name="mu2e::ProtonBunchTimeMC" />
 <class name="art::Wrapper<mu2e::ProtonBunchTimeMC>"/>
@@ -196,7 +213,10 @@ include="Math/Vector3D.h, Math/Vector4D.h, CLHEP/Vector/LorentzVector.h, CLHEP/V
 
 <class name="mu2e::CosmicLivetime"/>
 <class name="art::Wrapper<mu2e::CosmicLivetime>"/>
-
+<class name="art::Sampled<mu2e::CosmicLivetime>"/>
+<class name="art::Wrapper<art::Sampled<mu2e::CosmicLivetime> >"/>
+<class name="map<art::SubRunID,mu2e::CosmicLivetime>"/>
+<class name="map<string,map<art::SubRunID,mu2e::CosmicLivetime> >"/>
 
 <!--  ********* straws  ********* -->
 <class name="mu2e::StrawGasStep::StepType"/>
@@ -212,6 +232,8 @@ include="Math/Vector3D.h, Math/Vector4D.h, CLHEP/Vector/LorentzVector.h, CLHEP/V
 <class name="mu2e::StrawDigiMC"/>
 <class name="mu2e::StrawDigiMCCollection"/>
 <class name="art::Wrapper<mu2e::StrawDigiMCCollection>"/>
+<class name="mu2e::DigiProvenanceDetail"/>
+<class name="mu2e::DigiProvenance"/>
 
 <!--  ********* tracking   ********* -->
 <class name="mu2e::TrackSummaryMatchInfo" />
@@ -287,6 +309,20 @@ include="Math/Vector3D.h, Math/Vector4D.h, CLHEP/Vector/LorentzVector.h, CLHEP/V
 <class name="art::Assns<mu2e::CrvCoincidenceClusterMC,mu2e::CrvCoincidenceCluster,void>" />
 <class name="art::Wrapper<art::Assns<mu2e::CrvCoincidenceCluster,mu2e::CrvCoincidenceClusterMC,void> >" />
 <class name="art::Wrapper<art::Assns<mu2e::CrvCoincidenceClusterMC,mu2e::CrvCoincidenceCluster,void> >" />
+
+<!--  checksum from file->ShowStreamerInfo() -->
+<ioread sourceClass="mu2e::CrvDigiMC"
+        source="std::array<double,8> _voltages"
+        checksum="[2311366739]"
+        targetClass="mu2e::CrvDigiMC"
+        target="_voltages, _NZS"
+        include="array, vector">
+<![CDATA[
+  _voltages.resize(onfile._voltages.size());
+  for(size_t i=0; i<onfile._voltages.size(); ++i) _voltages[i]=onfile._voltages[i];
+  _NZS=false;
+]]>
+</ioread>
 
 
 <!--  ********* ExtMon  ********* -->

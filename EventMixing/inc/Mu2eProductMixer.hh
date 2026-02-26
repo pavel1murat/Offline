@@ -37,11 +37,14 @@
 #include "Offline/MCDataProducts/inc/CaloShowerStep.hh"
 #include "Offline/MCDataProducts/inc/StrawGasStep.hh"
 #include "Offline/MCDataProducts/inc/CrvStep.hh"
+#include "Offline/MCDataProducts/inc/SurfaceStep.hh"
 #include "Offline/MCDataProducts/inc/ExtMonFNALSimHit.hh"
 #include "Offline/MCDataProducts/inc/CosmicLivetime.hh"
 #include "Offline/MCDataProducts/inc/SimTimeOffset.hh"
 #include "Offline/MCDataProducts/inc/PhysicalVolumeInfoMultiCollection.hh"
-
+#include "Offline/RecoDataProducts/inc/StrawDigi.hh"
+#include "Offline/MCDataProducts/inc/StrawDigiMC.hh"
+#include "Offline/DataProducts/inc/EventWindowMarker.hh"
 
 
 //================================================================
@@ -100,8 +103,13 @@ namespace mu2e {
       fhicl::Table<CollectionMixerConfig> caloShowerStepMixer { fhicl::Name("caloShowerStepMixer") };
       fhicl::Table<CollectionMixerConfig> strawGasStepMixer { fhicl::Name("strawGasStepMixer") };
       fhicl::Table<CollectionMixerConfig> crvStepMixer { fhicl::Name("crvStepMixer") };
+      fhicl::Table<CollectionMixerConfig> surfaceStepMixer { fhicl::Name("surfaceStepMixer") };
       fhicl::Table<CollectionMixerConfig> extMonSimHitMixer { fhicl::Name("extMonSimHitMixer") };
       fhicl::Table<CollectionMixerConfig> eventIDMixer { fhicl::Name("eventIDMixer") };
+      fhicl::Table<CollectionMixerConfig> strawDigiMixer { fhicl::Name("strawDigiMixer") };
+      fhicl::Table<CollectionMixerConfig> strawDigiADCWaveformMixer { fhicl::Name("strawDigiADCWaveformMixer") };
+      fhicl::Table<CollectionMixerConfig> strawDigiMCMixer { fhicl::Name("strawDigiMCMixer") };
+      fhicl::Table<CollectionMixerConfig> eventWindowMarkerMixer { fhicl::Name("eventWindowMarkerMixer") };
       fhicl::OptionalTable<CosmicLivetimeMixerConfig> cosmicLivetimeMixer { fhicl::Name("cosmicLivetimeMixer") };
       fhicl::OptionalTable<VolumeInfoMixerConfig> volumeInfoMixer { fhicl::Name("volumeInfoMixer") };
       fhicl::OptionalAtom<art::InputTag> simTimeOffset { fhicl::Name("simTimeOffset"), fhicl::Comment("Simulation time offset to apply (optional)") };
@@ -144,9 +152,30 @@ namespace mu2e {
                             CrvStepCollection& out,
                             art::PtrRemapper const& remap);
 
+    bool mixSurfaceSteps(std::vector<SurfaceStepCollection const*> const& in,
+                            SurfaceStepCollection& out,
+                            art::PtrRemapper const& remap);
+
     bool mixExtMonSimHits(std::vector<ExtMonFNALSimHitCollection const*> const& in,
                           ExtMonFNALSimHitCollection& out,
                           art::PtrRemapper const& remap);
+
+    bool mixStrawDigis(std::vector<StrawDigiCollection const*> const& in,
+                       StrawDigiCollection& out,
+                       art::PtrRemapper const& remap);
+
+    bool mixStrawDigiADCWaveforms(std::vector<StrawDigiADCWaveformCollection const*> const& in,
+                       StrawDigiADCWaveformCollection& out,
+                       art::PtrRemapper const& remap);
+
+    bool mixStrawDigiMCs(std::vector<StrawDigiMCCollection const*> const& in,
+                       StrawDigiMCCollection& out,
+                       art::PtrRemapper const& remap);
+
+    bool mixEventWindowMarkers(std::vector<EventWindowMarker const*> const& in,
+                       EventWindowMarker& out,
+                       art::PtrRemapper const& remap);
+
 
     bool mixEventIDs(std::vector<art::EventIDSequence const*> const &in,
                      art::EventIDSequence& out,
@@ -176,6 +205,9 @@ namespace mu2e {
 
     typedef GenParticleCollection::size_type GenOffset;
     std::vector<GenOffset> genOffsets_;
+
+    typedef StrawGasStepCollection::size_type SGSOffset;
+    std::vector<SGSOffset> sgsOffsets_;
 
     void updateSimParticle(SimParticle& particle, SPOffset offset, art::PtrRemapper const& remap);
 

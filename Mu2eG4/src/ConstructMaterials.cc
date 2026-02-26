@@ -137,6 +137,20 @@ namespace mu2e {
       ConcreteMars->AddElement( getElementOrThrow("Fe"), 0.014); //Iron
     }
 
+    // SDF the average density refers to the average density of an 8'' Masonry Concrete Unit (see doc-db 11669 Architectural Drawings pag.9)
+    mat = uniqueMaterialOrThrow( "CONCRETE_MASONRY" );
+    {
+      G4Material* ConcreteMasonry = new G4Material(mat.name, 1.16*CLHEP::g/CLHEP::cm3, 9 );
+      ConcreteMasonry->AddElement( getElementOrThrow("H") , 0.006); //Hydrogen
+      ConcreteMasonry->AddElement( getElementOrThrow("C") , 0.030); //Carbon
+      ConcreteMasonry->AddElement( getElementOrThrow("O") , 0.500); //Oxygen
+      ConcreteMasonry->AddElement( getElementOrThrow("Na"), 0.010); //Sodium
+      ConcreteMasonry->AddElement( getElementOrThrow("Al"), 0.030); //Aluminum
+      ConcreteMasonry->AddElement( getElementOrThrow("Si"), 0.200); //Silicon
+      ConcreteMasonry->AddElement( getElementOrThrow("K") , 0.010); //Potassium
+      ConcreteMasonry->AddElement( getElementOrThrow("Ca"), 0.200); //Calcium
+      ConcreteMasonry->AddElement( getElementOrThrow("Fe"), 0.014); //Iron
+    }
 
     mat = uniqueMaterialOrThrow( "CONCRETE_CB4_07P" );
     {
@@ -415,6 +429,21 @@ namespace mu2e {
       StainlessSteel316L->AddMaterial(findMaterialOrThrow("G4_Fe"), 0.65545 );
     }
 
+    // Stainless Steel 304L https://www.thyssenkrupp-materials.co.uk/stainless-steel-304l-14307.html
+    mat = uniqueMaterialOrThrow( "StainlessSteel304L");
+    {
+      G4Material* StainlessSteel304L = new G4Material( mat.name, 8.00*CLHEP::g/CLHEP::cm3, 9);
+      StainlessSteel304L->AddMaterial(findMaterialOrThrow("G4_Cr"), 0.185    );
+      StainlessSteel304L->AddMaterial(findMaterialOrThrow("G4_Ni"), 0.095    );
+      StainlessSteel304L->AddMaterial(findMaterialOrThrow("G4_C"),  0.0003  );
+      StainlessSteel304L->AddMaterial(findMaterialOrThrow("G4_Mn"), 0.02    );
+      StainlessSteel304L->AddMaterial(findMaterialOrThrow("G4_Si"), 0.01   );
+      StainlessSteel304L->AddMaterial(findMaterialOrThrow("G4_P"),  0.00045 );
+      StainlessSteel304L->AddMaterial(findMaterialOrThrow("G4_S"),  0.00015  );
+      StainlessSteel304L->AddMaterial(findMaterialOrThrow("G4_N"),  0.001   );
+      StainlessSteel304L->AddMaterial(findMaterialOrThrow("G4_Fe"), 0.6881 );
+    }
+
     // A standard carbon-steel used for racks
     mat = uniqueMaterialOrThrow( "RackSteel" );
     {
@@ -494,7 +523,6 @@ namespace mu2e {
       BronzeC938->AddMaterial(findMaterialOrThrow("G4_Zn"),0.008);
       BronzeC938->AddMaterial(findMaterialOrThrow("G4_Sb"),0.008);
     }
-
 
     // C360 brass
     mat = uniqueMaterialOrThrow( "BrassC360" );
@@ -589,6 +617,26 @@ namespace mu2e {
       A6105SmallExtrusion->AddMaterial(findMaterialOrThrow("G4_Si"), 0.01);
       A6105SmallExtrusion->AddMaterial(findMaterialOrThrow("G4_Ti"), 0.001);
       A6105SmallExtrusion->AddMaterial(findMaterialOrThrow("G4_Zn"), 0.001);
+    }
+
+    // Aluminium alloy 6061
+    mat = uniqueMaterialOrThrow("Al6061");
+    {
+      G4Material* Al6061 = new G4Material(mat.name, 2.70*CLHEP::g/CLHEP::cm3, 4);
+      Al6061->AddMaterial(findMaterialOrThrow("G4_Al"), 0.980);
+      Al6061->AddMaterial(findMaterialOrThrow("G4_Mg"), 0.010);
+      Al6061->AddMaterial(findMaterialOrThrow("G4_Si"), 0.006);
+      Al6061->AddMaterial(findMaterialOrThrow("G4_Fe"), 0.004);
+    }
+
+    // Aluminium alloy 7075
+    mat = uniqueMaterialOrThrow("Al7075");
+    {
+      G4Material* Al7075 = new G4Material(mat.name, 2.81*CLHEP::g/CLHEP::cm3, 4);
+      Al7075->AddMaterial(findMaterialOrThrow("G4_Al"), 0.903);
+      Al7075->AddMaterial(findMaterialOrThrow("G4_Zn"), 0.056);
+      Al7075->AddMaterial(findMaterialOrThrow("G4_Mg"), 0.025);
+      Al7075->AddMaterial(findMaterialOrThrow("G4_Cu"), 0.016);
     }
 
     // NbTi
@@ -1660,7 +1708,128 @@ namespace mu2e {
 
      BP -> AddElement(elB, 5*CLHEP::perCent);
      BP -> AddMaterial(Poly, 95*CLHEP::perCent);
+    }
 
+    mat = uniqueMaterialOrThrow( "ClosePackedExtMonSteelShot");
+    {
+      //7.85 g/cm3 is the density of steel and 63.5% is the densest packing of spheres
+      constexpr double density = 7.85 * .635;
+      G4Material* ClosePackedExtMonSteelShot = new G4Material(mat.name, density*CLHEP::g/CLHEP::cm3, 1);
+      ClosePackedExtMonSteelShot -> AddMaterial(findMaterialOrThrow("MildSteel"), 100*CLHEP::perCent);
+    }
+
+    //Information from https://en.wikipedia.org/wiki/Difluoromethane
+    mat = uniqueMaterialOrThrow("R32");
+    {
+     G4Material* R32 = new G4Material(mat.name, 1.1*CLHEP::g/CLHEP::cm3, 3);
+
+     G4Element* eC = getElementOrThrow("C");
+     G4Element* eH  = getElementOrThrow("H");
+     G4Element* eF = getElementOrThrow("F");
+
+     R32->AddElement( eC,   1);
+     R32->AddElement( eH,   2);
+     R32->AddElement( eF,   2);
+
+    }
+
+    //Information from https://en.wikipedia.org/wiki/Pentafluoroethane
+    mat = uniqueMaterialOrThrow("R125");
+    {
+     G4Material* R125 = new G4Material(mat.name, 1.53*CLHEP::g/CLHEP::cm3, 3);
+
+     G4Element* eC = getElementOrThrow("C");
+     G4Element* eH  = getElementOrThrow("H");
+     G4Element* eF = getElementOrThrow("F");
+
+     R125->AddElement( eC,   2);
+     R125->AddElement( eH,   1);
+     R125->AddElement( eF,   5);
+
+    }
+
+    //Information from https://en.wikipedia.org/wiki/2,3,3,3-Tetrafluoropropene
+    mat = uniqueMaterialOrThrow("R1234yf");
+    {
+     G4Material* R1234yf = new G4Material(mat.name, 1.1*CLHEP::g/CLHEP::cm3, 3);
+
+     G4Element* eC = getElementOrThrow("C");
+     G4Element* eH  = getElementOrThrow("H");
+     G4Element* eF = getElementOrThrow("F");
+
+     R1234yf->AddElement( eC,   3);
+     R1234yf->AddElement( eH,   2);
+     R1234yf->AddElement( eF,   4);
+
+    }
+
+    //Information from https://en.wikipedia.org/wiki/1,1,1,2-Tetrafluoroethane
+    mat = uniqueMaterialOrThrow("R134a");
+    {
+     G4Material* R134a = new G4Material(mat.name, 1.206*CLHEP::g/CLHEP::cm3, 3);
+
+     G4Element* eC = getElementOrThrow("C");
+     G4Element* eH  = getElementOrThrow("H");
+     G4Element* eF = getElementOrThrow("F");
+
+     R134a->AddElement( eC,   2);
+     R134a->AddElement( eH,   2);
+     R134a->AddElement( eF,   4);
+
+    }
+
+    //Information from https://www.honeywell-refrigerants.com/europe/wp-content/uploads/2017/10/FPR-029-2017-09_Solstice_452A_A4_2892017.pdf
+    mat = uniqueMaterialOrThrow("R452A");
+    {
+     G4Material* R452A = new G4Material(mat.name, 1.1488*CLHEP::g/CLHEP::cm3, 3);
+
+     R452A->AddMaterial( findMaterialOrThrow("R1234yf"), 30.0*CLHEP::perCent);
+     R452A->AddMaterial( findMaterialOrThrow("R32"),     11.0*CLHEP::perCent);
+     R452A->AddMaterial( findMaterialOrThrow("R125"),    59.0*CLHEP::perCent);
+
+    }
+
+    //information from https://www.opteon.com/en/-/media/files/opteon/opteon-xp40-prodinfo.pdf?la=en&rev=f82b8f89deec4f19bdbc7c17a04fe314
+    mat = uniqueMaterialOrThrow("R449A");
+    {
+     G4Material* R449A = new G4Material(mat.name, 1.1141*CLHEP::g/CLHEP::cm3, 4);
+
+     R449A->AddMaterial( findMaterialOrThrow("R32"),     24.3*CLHEP::perCent);
+     R449A->AddMaterial( findMaterialOrThrow("R125"),    24.7*CLHEP::perCent);
+     R449A->AddMaterial( findMaterialOrThrow("R1234yf"), 25.3*CLHEP::perCent);
+     R449A->AddMaterial( findMaterialOrThrow("R134a"),   25.7*CLHEP::perCent);
+    }
+
+    //Information from https://julabo.us/wp-content/uploads/2023/03/Julabo-USA-SDS-Thermal-C5-1-1.pdf
+    // and https://en.wikipedia.org/wiki/Polydimethylsiloxane
+    // Assuming n = 1 for molecular formula
+    mat = uniqueMaterialOrThrow("C5Coolant");
+    {
+     G4Material* C5Coolant = new G4Material(mat.name, 0.965*CLHEP::g/CLHEP::cm3, 4);
+
+     G4Element* eH  = getElementOrThrow("H");
+     G4Element* eC  = getElementOrThrow("C");
+     G4Element* eSi = getElementOrThrow("Si");
+     G4Element* eO  = getElementOrThrow("O");
+
+     C5Coolant->AddElement( eH,   18);
+     C5Coolant->AddElement( eC,   6);
+     C5Coolant->AddElement( eSi,  2);
+     C5Coolant->AddElement( eO,   1);
+
+    }
+
+    // Grade 5 Titanium
+    //Information from https://www.matweb.com/search/DataSheet.aspx?MatGUID=a0655d261898456b958e5f825ae85390&ckck=1
+    mat = uniqueMaterialOrThrow("Ti6Al4V");
+    {
+     G4Material* Ti6Al4V = new G4Material(mat.name, 4.43*CLHEP::g/CLHEP::cm3, 3);
+
+     const double AlPercentage=6.125;
+     const double VPercentage=4.;
+     Ti6Al4V->AddMaterial(findMaterialOrThrow("G4_Ti"),(100.- AlPercentage -VPercentage)*CLHEP::perCent);
+     Ti6Al4V->AddMaterial(findMaterialOrThrow("G4_Al"),AlPercentage*CLHEP::perCent);
+     Ti6Al4V->AddMaterial(findMaterialOrThrow("G4_V"),VPercentage*CLHEP::perCent);
     }
 
     // Add new materials before this line
@@ -1732,7 +1901,7 @@ namespace mu2e {
                  << cond
                  << G4endl;
         }
-        if (std::find(conductors.begin(), conductors.end(), theMaterial->GetName())
+        if (std::find(conductors.begin(), conductors.end(), (std::string)(theMaterial->GetName()))
             != conductors.end() ) {
           G4NistManager::Instance()->SetDensityEffectCalculatorFlag(theMaterial, true);
           if (config_.debug().diagLevel() > 0) {

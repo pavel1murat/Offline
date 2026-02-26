@@ -48,18 +48,35 @@ namespace mu2e {
       using KKSTRAWXINGCOL = std::vector<KKSTRAWXINGPTR>;
       using KTRAJPTR = std::shared_ptr<KTRAJ>;
       using KKSTRAWHITCLUSTERER = KKStrawHitClusterer<KTRAJ>;
+      using PTRAJ = KinKal::ParticleTrajectory<KTRAJ>;
       KKStrawHitCluster() {}
       // create from a single hit
       KKStrawHitCluster(KKSTRAWHITPTR const& hitptr);
       // create from a collection of panel hits
       KKStrawHitCluster(KKSTRAWHITCOL const& hits,KKSTRAWHITCLUSTERER const& clusterer);
+      // clone op for reinstantiation
+      KKStrawHitCluster(KKStrawHitCluster<KTRAJ> const& rhs){
+        /**/
+      };
+      std::shared_ptr< KinKal::Hit<KTRAJ> > clone(CloneContext& context) const override{
+        auto rv = std::make_shared< KKStrawHitCluster<KTRAJ> >(*this);
+        for (const auto& ptr: this->strawHits()){
+          auto hit = context.get(ptr);
+          rv->push_back(hit);
+        }
+        for (const auto& ptr: this->strawXings()){
+          auto xng = context.get(ptr);
+          rv->push_back(xng);
+        }
+        return rv;
+      };
       //Hit interface
       bool active() const override { return false; } // panel hits are never active
       KinKal::Chisq chisq(KinKal::Parameters const& params) const override { return KinKal::Chisq(); }
       unsigned nDOF() const override { return 0; }
       KinKal::Weights const& weight() const override { return (*hits_.begin())->weight(); }
       double time() const override;
-      void updateReference(KTRAJPTR const& ktrajptr) override {} // nothing to do here, ref comes from individual hits
+      void updateReference(PTRAJ const& ptraj) override {} // nothing to do here, ref comes from individual hits
       KTRAJPTR const& refTrajPtr() const override { return (*hits_.begin())->refTrajPtr(); }
       // update the internals of the hit, specific to this meta-iteraion.  This will affect the next fit iteration
       void updateState(KinKal::MetaIterConfig const& config,bool first) override;
@@ -72,6 +89,11 @@ namespace mu2e {
       bool canAddHit(KKSTRAWHITPTR hit,KKSTRAWHITCLUSTERER const& clusterer) const;
       void addHit(KKSTRAWHITPTR hit,KKSTRAWHITCLUSTERER const& clusterer);
       void addXing(KKSTRAWXINGPTR xing);
+
+    protected:
+      void push_back(KKSTRAWHITPTR hit){ hits_.push_back(hit); }
+      void push_back(KKSTRAWXINGPTR xng){ xings_.push_back(xng); };
+
     private:
       // references to the individual hits and xings in this hit cluster
       KKSTRAWHITCOL hits_;

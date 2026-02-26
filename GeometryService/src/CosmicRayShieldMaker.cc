@@ -61,12 +61,14 @@ namespace mu2e
     _name      = config.getString("crs.name");
     _diagLevel = config.getInt("crs.verbosityLevel",0);
     _nSectors  = config.getInt("crs.nSectors");
-    _nLayers   = config.getInt("crs.nLayers");
+    _nLayersGlobal = config.getInt("crs.nLayers");
     config.getVectorString("crs.sectorNames",_crvSectorNames,_nSectors);
 
     _counterLength.resize(_nSectors);
     _nModules.resize(_nSectors);
+    _nLayers.resize(_nSectors);
     _nCountersPerModule.resize(_nSectors);
+    _countersOnly.resize(_nSectors);
     _firstCounter.resize(_nSectors);
     _offsetDirection.resize(_nSectors);
     _gapDirection.resize(_nSectors);
@@ -82,7 +84,9 @@ namespace mu2e
     {
       _counterLength[i]      = config.getDouble("crs.scintillatorBarLength"+_crvSectorNames[i]);
       _nModules[i]           = config.getInt("crs.nModules"+_crvSectorNames[i]);
+      _nLayers[i]            = config.getInt("crs.nLayers"+_crvSectorNames[i],_nLayersGlobal); //optionally overwrites the global value
       _nCountersPerModule[i] = config.getInt("crs.nCountersPerModule"+_crvSectorNames[i]);  //at one layer
+      _countersOnly[i]       = config.getBool("crs.countersOnly"+_crvSectorNames[i],false); //optionally remove strongbacks, aluminium sheets, absorbers
       _firstCounter[i]       = config.getHep3Vector("crs.firstCounter"+_crvSectorNames[i]);
       _offsetDirection[i]    = config.getHep3Vector("crs.offsetDirection"+_crvSectorNames[i]);
       _gapDirection[i]       = config.getHep3Vector("crs.gapDirection"+_crvSectorNames[i]);
@@ -104,7 +108,7 @@ namespace mu2e
     _gapSmall               = config.getDouble("crs.gapSmall");
     _gapBetweenModules      = config.getDouble("crs.gapBetweenModules");
 
-    config.getVectorDouble("crs.gapBetweenLayers",_gapBetweenLayers,_nLayers-1);
+    config.getVectorDouble("crs.gapBetweenLayers",_gapBetweenLayers,_nLayersGlobal-1);
     _aluminumSheetThickness = config.getDouble("crs.aluminumSheetThickness");
     _strongBackThickness    = config.getDouble("crs.strongBackThickness");
 
@@ -166,7 +170,7 @@ namespace mu2e
       shield._modules.push_back(CRSScintillatorModule(CRSScintillatorModuleId(isector,imodule)));
       CRSScintillatorModule &module = shield._modules.back();
 
-      for(int ilayer=0; ilayer<_nLayers; ilayer++)
+      for(int ilayer=0; ilayer<_nLayers[isector]; ilayer++)
       {
         module._layers.push_back(CRSScintillatorLayer(CRSScintillatorLayerId(isector,imodule,ilayer)));
         CRSScintillatorLayer &layer = module._layers.back();
@@ -208,7 +212,7 @@ namespace mu2e
         for(int i=0; i<3; i++) layer._localToWorld[i] = localToWorld[i];
 
         //Absorber layer position and dimension
-        if(ilayer<_nLayers-1)
+        if(ilayer<_nLayers[isector]-1 && _nLayers[isector]>1 && _countersOnly[isector]==false)
         {
           module._absorberLayers.push_back(CRSAbsorberLayer());
           CRSAbsorberLayer &absorberLayer = module._absorberLayers.back();
@@ -221,7 +225,7 @@ namespace mu2e
         }
 
         //Strong back
-        if(ilayer==0)
+        if(ilayer==0 && _nLayers[isector]>1 && _countersOnly[isector]==false)
         {
           module._aluminumSheets.push_back(CRSAluminumSheet());
           CRSAluminumSheet &aluminumSheet = module._aluminumSheets.back();
@@ -234,7 +238,7 @@ namespace mu2e
         }
 
         //Thin aluminum sheet
-        if(ilayer==_nLayers-1)
+        if(ilayer==_nLayers[isector]-1 && _nLayers[isector]>1 && _countersOnly[isector]==false)
         {
           module._aluminumSheets.push_back(CRSAluminumSheet());
           CRSAluminumSheet &aluminumSheet = module._aluminumSheets.back();
@@ -247,7 +251,7 @@ namespace mu2e
         }
 
         //FEB positions and dimensions
-        if(ilayer==_nLayers-1)
+        if(ilayer==_nLayers[isector]-1 && _nLayers[isector]>1 && _countersOnly[isector]==false)
         {
           for(int FEBlayer=0; FEBlayer<2; FEBlayer++)
           {
@@ -332,7 +336,7 @@ namespace mu2e
     int nBars=0;
     for(int isector=0; isector<_nSectors; isector++)
     {
-      nBars+=_nModules[isector]*_nLayers*_nCountersPerModule[isector];
+      nBars+=_nModules[isector]*_nLayers[isector]*_nCountersPerModule[isector];
     }
     _crs->_allCRSScintillatorBars.reserve(nBars);
 
@@ -357,12 +361,13 @@ namespace mu2e
       counterHalfLengths[thicknessDirection]=_counterThickness/2.0;
       counterHalfLengths[widthDirection]=_counterWidth/2.0;
 
-      std::vector<CLHEP::Hep3Vector> layerOffsets(_nLayers);
+      std::vector<CLHEP::Hep3Vector> layerOffsets(_nLayers[isector]);
       layerOffsets[0].set(0,0,0);
-      for(int j=1; j<_nLayers; j++)
+      for(int j=1; j<_nLayers[isector]; j++)
       {
         layerOffsets[j]=layerOffsets[j-1];
-        layerOffsets[j]+=(_counterThickness+_gapBetweenLayers[j-1])*_layerDirection[isector];
+        layerOffsets[j]+=_counterThickness*_layerDirection[isector];
+        if(_countersOnly[isector]==false) layerOffsets[j]+=_gapBetweenLayers[j-1]*_layerDirection[isector];
         layerOffsets[j]+=_offset*_offsetDirection[isector];
       }
 //VTNC = Vector to next counter

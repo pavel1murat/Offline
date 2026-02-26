@@ -17,6 +17,7 @@
 #include "Offline/STMGeom/inc/GeDetector.hh"
 #include "Offline/STMGeom/inc/ShieldPipe.hh"
 #include "Offline/STMGeom/inc/STM_SSC.hh"
+#include "Offline/STMGeom/inc/SSCSupport.hh"
 #include "Offline/STMGeom/inc/HPGeDetector.hh"
 #include "Offline/STMGeom/inc/LaBrDetector.hh"
 #include "Offline/STMGeom/inc/FrontShielding.hh"
@@ -38,6 +39,15 @@ namespace mu2e {
 
   public:
 
+    ~STM() override = default;
+
+    // delete automatic copy/assignments as not needed (would be incorrect due to unique_ptr anyway)
+    STM( STM const& ) = delete;
+    STM( STM const&& ) = delete;
+    STM& operator= ( STM const& ) = delete;
+    STM& operator= ( STM&&      ) = delete;
+
+
     STMDownstreamEnvelope  const * getSTMDnStrEnvPtr()       const { return _pSTMDnStrEnvParams.get(); }
     PermanentMagnet  const * getSTMMagnetPtr()               const { return _pSTMMagnetParams.get(); }
     TransportPipe    const * getSTMTransportPipePtr()        const { return _pSTMTransportPipeParams.get(); }
@@ -49,6 +59,8 @@ namespace mu2e {
     GeDetector       const * getSTMDetector2Ptr()            const { return _pSTMDetector2Params.get(); }
     ShieldPipe       const * getSTMShieldPipePtr()           const { return _pSTMShieldPipeParams.get(); }
     STM_SSC          const * getSTM_SSCPtr()                 const { return _pSTM_SSCParams.get(); }
+    SSCSupport       const * getSSCSupportPtr()              const { return _pSSCSupportParams.get(); }
+
     HPGeDetector     const * getHPGeDetectorPtr()            const { return _pSTMHPGeDetectorParams.get(); }
     LaBrDetector     const * getLaBrDetectorPtr()            const { return _pSTMLaBrDetectorParams.get(); }
 
@@ -74,10 +86,6 @@ namespace mu2e {
     // The class should only be constructed via STM::STMMaker.
     STM(){};
 
-    // hide automatic copy/assignments as not needed (would be incorrect due to unique_ptr anyway)
-    STM( STM const & );
-    STM const & operator= ( STM const & );
-
     std::unique_ptr<STMDownstreamEnvelope>  _pSTMDnStrEnvParams;
     std::unique_ptr<PermanentMagnet>  _pSTMMagnetParams;
     std::unique_ptr<TransportPipe>    _pSTMTransportPipeParams;
@@ -89,6 +97,8 @@ namespace mu2e {
     std::unique_ptr<GeDetector>       _pSTMDetector2Params;
     std::unique_ptr<ShieldPipe>       _pSTMShieldPipeParams;
     std::unique_ptr<STM_SSC>          _pSTM_SSCParams;
+    std::unique_ptr<SSCSupport>       _pSSCSupportParams;
+
     std::unique_ptr<HPGeDetector>     _pSTMHPGeDetectorParams;
     std::unique_ptr<LaBrDetector>     _pSTMLaBrDetectorParams;
 

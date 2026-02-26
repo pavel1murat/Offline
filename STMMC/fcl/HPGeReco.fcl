@@ -1,0 +1,95 @@
+
+# Original author: Pawel Plesniak
+
+#include "Offline/fcl/standardServices.fcl"
+#include "Offline/fcl/minimalMessageService.fcl"
+#include "Offline/STMConditions/fcl/prolog.fcl"
+#include "Offline/STMReco/fcl/prolog.fcl"
+#include "Offline/STMMC/fcl/prolog.fcl"
+
+process_name: HPGeReco
+
+source : {
+  module_type : RootInput
+}
+
+services : @local::Services.Sim
+physics : {
+  producers : {
+    DigiHPGe : {
+      module_type : HPGeWaveformsFromStepPointMCs
+      StepPointMCsTagEle : @local::STMMCAnalysis.MixedEventsTags.StepPointMCsTagEle
+      StepPointMCsTagMu : @local::STMMCAnalysis.MixedEventsTags.StepPointMCsTagMu
+      StepPointMCsTag1809 : @local::STMMCAnalysis.MixedEventsTags.StepPointMCsTag1809
+      fADC : @local::STMDAQParameters.samplingFrequencies.HPGe #TODO - make this module work with multiple frequencies
+      EnergyPerADCBin : @local::HPGeDigitization.EnergyPerADCBin
+      NoiseSD : @local::HPGeDigitization.PreamplifierNoiseSD
+      risingEdgeDecayConstant : @local::HPGeDigitization.DecayConstant
+      microspillBufferLengthCount : @local::HPGeDigitization.microspillBufferLengthCount
+      makeTTree : false
+      timeOffset : 0
+      resetEventNumber : @local::HPGeDigitization.resetEventNumber
+      verbosityLevel : 0
+    }
+    concatenateWaveformsHPGe : {
+      module_type : ConcatenateDigitizedWaveforms
+      STMWaveformDigisTag : @local::HPGeDigitization.concatenation.STMWaveformDigisTag
+      nMerge : @local::HPGeDigitization.concatenation.nMerge
+      makeTTree : false
+    }
+    ZSHPGe : {
+      module_type : STMZeroSuppression
+      stmWaveformDigisTag : @local::STMMCAnalysis.ZS.HPGe.stmWaveformDigisTag.concatenated
+      tbefore : @local::STMMCAnalysis.ZS.HPGe.tbefore
+      tafter : @local::STMMCAnalysis.ZS.HPGe.tafter
+      threshold : @local::STMMCAnalysis.ZS.HPGe.threshold
+      window : @local::STMMCAnalysis.ZS.HPGe.window
+      naverage : @local::STMMCAnalysis.ZS.HPGe.naverage
+      verbosityLevel : 0
+      makeTTreeGradients: false
+      makeTTreeWaveforms: false
+    }
+    MWDHPGe : {
+      module_type : STMMovingWindowDeconvolution
+      stmWaveformDigisTag : @local::STMMCAnalysis.MWD.HPGe.stmWaveformDigisTag.concatenated
+      tau : @local::STMMCAnalysis.MWD.HPGe.tau
+      M : @local::STMMCAnalysis.MWD.HPGe.M
+      L : @local::STMMCAnalysis.MWD.HPGe.L
+      nsigma_cut : @local::STMMCAnalysis.MWD.HPGe.nsigma_cut
+      thresholdgrad : @local::STMMCAnalysis.MWD.HPGe.thresholdgrad
+      defaultBaselineMean : @local::STMMCAnalysis.MWD.HPGe.defaultBaselineMean.suppressed
+      defaultBaselineSD : @local::STMMCAnalysis.MWD.HPGe.defaultBaselineSD.suppressed
+      makeTTreeMWD: false
+      makeTTreeEnergies: false
+      TTreeEnergyCalib : @local::HPGeDigitization.EnergyPerADCBin
+      verbosityLevel : 0
+      xAxis : ""
+    }
+  }
+  filters : {
+    concatenationFilterHPGe : {
+      module_type : ConcatenationFilter
+      STMWaveformDigisTag : @local::HPGeDigitization.concatenation.filterTag
+    }
+  }
+  digitization_path : [DigiHPGe, concatenateWaveformsHPGe, concatenationFilterHPGe, ZSHPGe, MWDHPGe]
+  trigger_paths : [digitization_path]
+  output_path : [compressedOutput]
+  end_paths : [output_path]
+}
+
+outputs : {
+  compressedOutput : {
+    module_type : RootOutput
+    fileName : "dts.owner.HPGeReco.version.sequencer.art"
+    SelectEvents: ["digitization_path"]
+    outputCommands: [
+        "drop *_*_*_*",
+        "keep mu2e::STMMWDDigis_MWDHPGe_*_HPGeReco"
+    ]
+  }
+}
+
+services.scheduler.wantSummary: true
+services.SeedService.baseSeed : 1
+services.TFileService.fileName : "nts.owner.HPGeRecoTree.version.sequencer.root"

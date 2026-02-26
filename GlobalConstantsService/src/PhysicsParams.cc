@@ -78,6 +78,7 @@ namespace mu2e {
       _atomicNumber[material]   = config.getInt   ("physicsParams."+material+".atomicNumber");
       _decayTime[material]      = config.getDouble("physicsParams."+material+".decayTime" );
       _decayFraction[material]  = config.getDouble("physicsParams."+material+".decayFraction" );
+      _atomicRadius[material]	= config.getDouble("physicsParams."+material+".atomicRadius");
 
       // Calculate approx. binding energy
       _approxBindingEnergy[material] = muonMass*cet::square(alpha*_atomicNumber[material])/2.;
@@ -120,6 +121,10 @@ namespace mu2e {
       if(config.hasName(name)) _captureNeutronRate[material] = config.getDouble(name);
       name = "physicsParams."+material+".capture.photonRate";
       if(config.hasName(name)) _capturePhotonRate[material] = config.getDouble(name);
+      name = "physicsParams."+material+".capture.RMCRate";
+      if(config.hasName(name)) _captureRMCRate[material] = config.getDouble(name);
+      name = "physicsParams."+material+".capture.RMCInternalRate";
+      if(config.hasName(name)) _captureRMCInternalRate[material] = config.getDouble(name);
 
       // Load capture gamma rays
       name = "physicsParams."+material+".capture.photon.1809keV.energy";

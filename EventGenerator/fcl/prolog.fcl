@@ -194,15 +194,27 @@ ParticleGunMu : { tool_type: "ParticleGunMu"
 
 
 GenFilter : {
-        module_type : GenFilter
-        StageParticleCollection : "generate"
-        isNull : true
+    module_type : GenFilter
+    StageParticleCollection : "generate"
+    filterMaxR     : false
+    filterEnergy   : false
+    filterMomentum : false
+    filterPT       : false
+}
+
+PionFilter : {
+        module_type : PionFilter
+        tmin : 300
+        tmax : 1e8
+        processCode : 54 #mu2eKillerVolume
+        isNull : false
 }
 
 genFilters : # in case we want to add more here
 {
    filters : {
         GenFilter: @local::GenFilter
+        PionFilter: @local::PionFilter
    }
 }
 
@@ -350,20 +362,6 @@ EventGenerator : { @table::EventGenerator
             }
         }
 
-        RPCGun : {
-            module_type    : RPCGun
-            verbosityLevel : 0
-            doHistograms   : false
-            physics : {
-                generateIntConversion : 0    # 0:photons 1: e+e- internal conversion pairs
-                spectrumShape         : "Bistirlich"    # could also be "flat"
-                elow                  : 1.5
-                ehi                   : 140.1
-                spectrumResolution    : 0.1 # hopefully, in MeV
-            }
-            pionStops                 : { @table::EventGenerator.pionStops }
-        }
-
         RMCGun : {
             module_type    : RMCGun
             verbosityLevel : 0
@@ -393,10 +391,34 @@ EventGenerator : { @table::EventGenerator
             muonStops                 : { @table::muonStops  }
         }
 
+        RMCGenerator : {
+            module_type : SingleProcessGenerator
+            inputSimParticles: TargetStopResampler
+            stoppingTargetMaterial : "Al"
+            decayProducts : {
+                tool_type : RMCGenerator
+                spectrum : {
+                    elow              : 85
+                    ehi               : 90.1
+                    kMaxUserSet       : true
+                    kMaxUser          : 90.1
+                    spectrumShape     : "RMC"
+                    spectrumResolution: 0.1
+                }
+                mode : "external" #Options are "external" "internal" or "physical"
+            }
+            verbosity : 0
+        }
+
+        GammaConversion : {
+            module_type : GammaConversion
+            material    : 13
+            verbosity   : 0
+        }
+
         CaloTBGun : {
             module_type    : CaloTBGun
         }
-
 
         positronGun : { @table::EventGeneratorMu
 #------------------------------------------------------------------------------
@@ -420,6 +442,10 @@ EventGenerator : { @table::EventGenerator
                 pmin            : 70.
                 pmax            : 70.
             }
+        }
+
+        SimpleAntiprotonGun : {
+            module_type : SimpleAntiprotonGun
         }
     }
 }

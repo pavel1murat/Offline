@@ -36,6 +36,7 @@
 #include "Offline/Mu2eG4/inc/Mu2eG4MinDEDXModularPhysicsList.hh"
 #include "Offline/Mu2eG4/inc/Mu2eG4StepLimiterPhysicsConstructor.hh"
 #include "Offline/Mu2eG4/inc/Mu2eG4CustomizationPhysicsConstructor.hh"
+#include "Offline/Mu2eG4/inc/Mu2eG4BiasedRDPhysics.hh"
 
 // CLHEP includes
 #include "CLHEP/Units/SystemOfUnits.h"
@@ -52,6 +53,10 @@
 #include "Geant4/G4EmParameters.hh"
 #endif
 
+#if G4VERSION>4106
+#include "Geant4/G4HadronicParameters.hh"
+#endif
+
 using namespace std;
 
 namespace mu2e{
@@ -61,7 +66,6 @@ namespace mu2e{
                                          , const Mu2eG4ResourceLimits& lim) {
 
     G4VModularPhysicsList* tmpPL(nullptr);
-
     const string name = phys.physicsListName();
 
     debug.diagLevel()>-1 && G4cout << __func__ << " invoked with " << name << G4endl;
@@ -85,6 +89,22 @@ namespace mu2e{
     // General case
     else {
 
+    // the Hadronic params have to be set before defining the list
+
+#if G4VERSION>4112
+    { bool BertiniAs11_2 = true; // restores 11.2 behavior in Geant4 11.3.p02
+      phys.setBertiniAs11_2(BertiniAs11_2);
+      if (BertiniAs11_2) {
+        if (debug.diagLevel()>0) {
+          G4cout << __func__
+                 << " Setting Bertini model behavior to one of 11.2 "
+                 << G4endl;
+        }
+        G4HadronicParameters::Instance()->SetBertiniAs11_2(BertiniAs11_2);
+      }
+    }
+#endif
+
       G4PhysListFactory physListFactory;
       physListFactory.SetVerbose(debug.diagLevel());
       tmpPL = physListFactory.GetReferencePhysList(name);
@@ -104,18 +124,38 @@ namespace mu2e{
     // Mu2e Customizations
     tmpPL->RegisterPhysics( new Mu2eG4CustomizationPhysicsConstructor(&phys, &debug, &lim));
 
-    if (phys.turnOffRadioactiveDecay()) {
-      tmpPL->RemovePhysics("G4RadioactiveDecay");
-    }
-
     if ( phys.turnOffRadioactiveDecay() && phys.turnOnRadioactiveDecay() ) {
       mf::LogError("Config") << "Inconsistent config";
       G4cout << "Error: turnOnRadioactiveDecay & turnOffRadioactiveDecay on" << G4endl;
       throw cet::exception("BADINPUT")<<" decide on turnOn/OffRadioactiveDecay\n";
     }
 
+    if ( phys.turnOnRadioactiveDecay() && phys.radiationVRmode() ) {
+      mf::LogError("Config") << "Inconsistent config";
+      G4cout << "Error: turnOnRadioactiveDecay & radiationVRmode on" << G4endl;
+      throw cet::exception("BADINPUT")<<" decide on one option\n";
+    }
+
+    if ( phys.turnOffRadioactiveDecay() && phys.radiationVRmode() ) {
+      mf::LogError("Config") << "Inconsistent config";
+      G4cout << "Error: turnOffRadioactiveDecay & radiationVRmode on" << G4endl;
+      throw cet::exception("BADINPUT")<<" decide on one option\n";
+    }
+
+    if (phys.turnOffRadioactiveDecay()) {
+      tmpPL->RemovePhysics("G4RadioactiveDecay");
+    }
+
     if (phys.turnOnRadioactiveDecay()) {
+      // turn it off first to avoid warning if this process is already included in the
+      // physics list, does nothing if the process is absent
+      tmpPL->RemovePhysics("G4RadioactiveDecay");
       tmpPL->RegisterPhysics(new G4RadioactiveDecayPhysics(debug.diagLevel()));
+    }
+
+    if (phys.radiationVRmode()){
+      tmpPL->RemovePhysics("G4RadioactiveDecay");
+      tmpPL->RegisterPhysics(new Mu2eG4BiasedRDPhysics(&phys, debug.diagLevel()));
     }
 
     if (phys.turnOnThermalNeutronPhysics()) {

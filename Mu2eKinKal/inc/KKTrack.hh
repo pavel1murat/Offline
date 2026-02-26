@@ -9,11 +9,17 @@
 #include "Offline/Mu2eKinKal/inc/KKStrawHit.hh"
 #include "Offline/Mu2eKinKal/inc/KKStrawHitCluster.hh"
 #include "Offline/Mu2eKinKal/inc/KKStrawXing.hh"
+#include "Offline/Mu2eKinKal/inc/KKShellXing.hh"
 #include "Offline/Mu2eKinKal/inc/KKCaloHit.hh"
+#include "Offline/DataProducts/inc/SurfaceId.hh"
+#include "KinKal/Geometry/Intersection.hh"
+#include <tuple>
 namespace mu2e {
 
   using KinKal::Config;
   using KinKal::BFieldMap;
+  using KinKal::TimeDir;
+  using KinKal::Intersection;
 
   template <class KTRAJ> class KKTrack : public KinKal::Track<KTRAJ> {
     public:
@@ -36,30 +42,122 @@ namespace mu2e {
       using EXING = KinKal::ElementXing<KTRAJ>;
       using EXINGPTR = std::shared_ptr<EXING>;
       using EXINGCOL = std::vector<EXINGPTR>;
+      using KKIPAXING = KKShellXing<KTRAJ,KinKal::Cylinder>;
+      using KKIPAXINGPTR = std::shared_ptr<KKIPAXING>;
+      using KKIPAXINGCOL = std::vector<KKIPAXINGPTR>;
+      using KKSTXING = KKShellXing<KTRAJ,KinKal::Annulus>;
+      using KKSTXINGPTR = std::shared_ptr<KKSTXING>;
+      using KKSTXINGCOL = std::vector<KKSTXINGPTR>;
+      using KKCRVXING = KKShellXing<KTRAJ,KinKal::Rectangle>;
+      using KKCRVXINGPTR = std::shared_ptr<KKCRVXING>;
+      using KKCRVXINGCOL = std::vector<KKCRVXINGPTR>;
+      using KKINTER = std::tuple<SurfaceId,KinKal::Intersection>;
+      using KKINTERCOL = std::vector<KKINTER>;
       using TRACK = KinKal::Track<KTRAJ>;
+      using PKTRAJ = KinKal::ParticleTrajectory<KTRAJ>;
+      using PKTRAJPTR = std::unique_ptr<PKTRAJ>;
+      using DOMAINPTR = std::shared_ptr<KinKal::Domain>;
+      using DOMAINCOL = std::set<DOMAINPTR>;
       // construct from configuration, fit environment, and hits and materials
       KKTrack(Config const& config, BFieldMap const& bfield, KTRAJ const& seedtraj, PDGCode::type tpart, KKSTRAWHITCLUSTERER const& shclusterer,
           KKSTRAWHITCOL const& strawhits, KKSTRAWXINGCOL const& strawxings, KKCALOHITCOL const& calohits, std::array<double, KinKal::NParams()> constraints = {0});
+      // construct from regrown constituants
+      KKTrack(Config const& config, BFieldMap const& bfield, PDGCode::type tpart,
+          PKTRAJPTR& fittraj, KKSTRAWHITCOL& strawhits, KKSTRAWXINGCOL& strawxings, KKCALOHITCOL& calohits, DOMAINCOL& domains);
+      // copy constructor
+      KKTrack(KKTrack<KTRAJ> const& rhs, CloneContext& context): KinKal::Track<KTRAJ>(rhs, context),
+          tpart_(rhs.fitParticle()),
+          shclusterer_(rhs.strawHitClusterer()),
+          strawhits_(rhs.strawHits()),
+          strawxings_(rhs.strawXings()),
+          inters_(rhs.intersections()),
+          calohits_(rhs.caloHits()){
+        // hits and crossings were reallocated into the base copy; here,
+        // we propagate references to those reallocations to the subclass
+        this->remap_pointer_collection(strawhits_, this->hits(), context);
+        this->remap_pointer_collection(calohits_, this->hits(), context);
+        this->remap_pointer_collection(strawxings_, this->exings(), context);
+        // noncontained crossings and clusters are not stored in
+        // the base, so we are responsible for reallocations here
+        this->clone_pointer_collection(ipaxings_, rhs.IPAXings(), context);
+        this->clone_pointer_collection(stxings_, rhs.STXings(), context);
+        this->clone_pointer_collection(crvxings_, rhs.CRVXings(), context);
+        this->clone_pointer_collection(strawhitclusters_, rhs.strawHitClusters(), context);
+      }
+
+      template<typename T>
+      using PtrVector = std::vector< std::shared_ptr<T> >;
+      template<typename T, typename U>
+      void remap_pointer_collection(PtrVector<T>& lhs, const PtrVector<U>& rhs,
+                                    CloneContext& context){
+        lhs.clear();
+        lhs.reserve(rhs.size());
+        for (const auto& item: rhs){
+          auto realloc = context.get(item);
+          auto casted = dynamic_pointer_cast<T>(realloc);
+          if (casted){
+            lhs.push_back(casted);
+          }
+        }
+      }
+      template<typename T, typename U>
+      void clone_pointer_collection(PtrVector<T>& lhs, const PtrVector<U>& rhs,
+                                    CloneContext& context){
+        lhs.clear();
+        lhs.reserve(rhs.size());
+        for (const auto& ptr: rhs){
+          auto realloc = ptr->clone(context);
+          auto casted = dynamic_pointer_cast<T>(realloc);
+          if (!casted){
+            std::string msg = "mistyped pointee";
+            throw cet::exception("KKTrack") << msg << std::endl;
+          }
+          lhs.push_back(casted);
+        }
+      }
+
       // extend the track according to new configuration, hits, and/or exings
       void extendTrack(Config const& config,
           KKSTRAWHITCOL const& strawhits, KKSTRAWXINGCOL const& strawxings, KKCALOHITCOL const& calohits );
       // extend the track to cover a new set of material Xings.  This will reuse the existing config object
       void extendTrack(EXINGCOL const& xings);
+      // add IPA Xing
+      void addIPAXing(KKIPAXINGPTR const& ipaxing,TimeDir const& tdir);
+      // add ST Xing
+      void addSTXing(KKSTXINGPTR const& stxing,TimeDir const& tdir);
+      // add TCRV Xing
+      void addTCRVXing(KKCRVXINGPTR const& crvxing,TimeDir const& tdir);
+      // add intersections
+      void addIntersection(SurfaceId const& sid, Intersection const& inter) { inters_.emplace_back(sid,inter); }
+
       // accessors
       PDGCode::type fitParticle() const { return tpart_;}
       KKSTRAWHITCOL const& strawHits() const { return strawhits_; }
       KKSTRAWHITCLUSTERCOL const& strawHitClusters() const { return strawhitclusters_; }
       KKSTRAWXINGCOL const& strawXings() const { return strawxings_; }
+      KKIPAXINGCOL const& IPAXings() const { return ipaxings_; }
+      KKSTXINGCOL const& STXings() const { return stxings_; }
+      KKCRVXINGCOL const& CRVXings() const { return crvxings_; }
+      KKINTERCOL const& intersections() const { return inters_; }
       KKCALOHITCOL const& caloHits() const { return calohits_; }
       void printFit(std::ostream& ost=std::cout,int detail=0) const;
+      // allow reversing the charge (in some fits it can change dynamically)
+      void reverseCharge() { tpart_ = static_cast<PDGCode::type>(tpart_*-1); }
+      // other accessors
+      auto const& strawHitClusterer() const { return shclusterer_; }
     private:
       // record the particle type
       PDGCode::type tpart_;
       KKSTRAWHITCLUSTERER shclusterer_; // clustering functor
+      TrkFitFlag flag_;
       KKSTRAWHITCOL strawhits_;  // straw hits used in this fit
       KKSTRAWXINGCOL strawxings_;  // straw material crossings used in this fit
-      KKSTRAWHITCLUSTERCOL strawhitclusters_;  // straw hit clusters used in this fit
       KKCALOHITCOL calohits_;  // calo hits used in this fit
+      KKIPAXINGCOL ipaxings_;  // ipa material crossings used in extrapolation
+      KKSTXINGCOL stxings_;  // stopping target material crossings used in extrapolation
+      KKCRVXINGCOL crvxings_; // crv crossings using in extrapolation
+      KKINTERCOL inters_; // other recorded intersections
+      KKSTRAWHITCLUSTERCOL strawhitclusters_;  // straw hit clusters used in this fit
       // utility function to convert to generic types
       void convertTypes( KKSTRAWHITCOL const& strawhits, KKSTRAWXINGCOL const& strawxings,KKCALOHITCOL const& calohits,
           MEASCOL& hits, EXINGCOL& exings);
@@ -73,10 +171,8 @@ namespace mu2e {
       KKSTRAWXINGCOL const& strawxings,
       KKCALOHITCOL const& calohits,
       std::array<double, KinKal::NParams()> constraints) :
-    KinKal::Track<KTRAJ>(config,bfield,seedtraj), tpart_(tpart), shclusterer_(shclusterer),
-    strawhits_(strawhits),
-    strawxings_(strawxings),
-    calohits_(calohits) {
+    KinKal::Track<KTRAJ>(config,bfield), tpart_(tpart), shclusterer_(shclusterer),
+    strawhits_(strawhits), strawxings_(strawxings), calohits_(calohits) {
       MEASCOL hits; // polymorphic container of hits
       EXINGCOL exings; // polymorphic container of detector element crossings
       // add the hits to clusters, as required
@@ -87,7 +183,7 @@ namespace mu2e {
           shcluster->print(std::cout,this->config().plevel_);
         }
       }
-      convertTypes(strawhits_, strawxings_, calohits_,  hits,exings);
+      convertTypes(strawhits_, strawxings_, calohits_,  hits, exings);
 
       std::array<bool,KinKal::NParams()> mask = {false};
       bool constraining = false;
@@ -112,9 +208,22 @@ namespace mu2e {
         }
         hits.push_back(std::make_shared<KinKal::ParameterHit<KTRAJ>>(seedtraj.range().mid(),seedtraj,cparams,mask));
       }
-
-      this->fit(hits,exings);
+      // now fit these
+      this->fit(hits, exings, seedtraj);
     }
+
+
+  template <class KTRAJ> KKTrack<KTRAJ>::KKTrack(Config const& config, BFieldMap const& bfield, PDGCode::type tpart,
+      PKTRAJPTR& fittraj, KKSTRAWHITCOL& strawhits, KKSTRAWXINGCOL& strawxings, KKCALOHITCOL& calohits, DOMAINCOL& domains) :
+    KinKal::Track<KTRAJ>(config,bfield), tpart_(tpart),shclusterer_(StrawIdMask::none,0,0.0),
+    strawhits_(strawhits), strawxings_(strawxings), calohits_(calohits) {
+    // convert types
+    MEASCOL hits; // polymorphic container of hits
+    EXINGCOL exings; // polymorphic container of detector element crossings
+    convertTypes(strawhits_, strawxings_, calohits_,  hits, exings);
+    this->fit(hits,exings,domains,fittraj);
+    // add ParameterHit, intersect, extrapolate, ... TODO
+  }
 
   template <class KTRAJ> void KKTrack<KTRAJ>::addHitClusters(KKSTRAWHITCOL const& strawhits,KKSTRAWXINGCOL const& strawxings,MEASCOL& hits) {
     if(shclusterer_.clusterLevel() != StrawIdMask::none){
@@ -202,7 +311,6 @@ namespace mu2e {
   }
 
   template <class KTRAJ> void KKTrack<KTRAJ>::printFit(std::ostream& ost,int printlevel) const {
-    if(printlevel > 1) std::cout << "Seed Helix " << this->seedTraj() << std::endl;
     TRACK::print(ost,0);
     ost << "Fit with " << strawhits_.size() << " StrawHits and " << calohits_.size() << " CaloHits and " << strawxings_.size() << " Straw Xings" << std::endl;
     if(printlevel > 2){
@@ -211,6 +319,33 @@ namespace mu2e {
       for(auto const& strawxing :strawxings_) strawxing->print(std::cout,2);
       for(auto const& strawhitcluster :strawhitclusters_) strawhitcluster->print(std::cout,2);
     }
+  }
+
+  template <class KTRAJ> void KKTrack<KTRAJ>::addIPAXing(KKIPAXINGPTR const& ipaxingptr,TimeDir const& tdir) {
+    // convert to a generic Xing
+    std::shared_ptr<KinKal::ElementXing<KTRAJ>> exptr = std::static_pointer_cast<KinKal::ElementXing<KTRAJ>>(ipaxingptr);
+    // extrapolate the fit throug this xing
+    if(!this->extrapolate(exptr,tdir))throw cet::exception("RECO")<<"mu2e::KKTrack: Shell extrapolation failure"<< std::endl;
+    // store the xing
+    ipaxings_.push_back(ipaxingptr);
+  }
+
+  template <class KTRAJ> void KKTrack<KTRAJ>::addSTXing(KKSTXINGPTR const& stxingptr,TimeDir const& tdir) {
+    // convert to a generic Xing
+    std::shared_ptr<KinKal::ElementXing<KTRAJ>> exptr = std::static_pointer_cast<KinKal::ElementXing<KTRAJ>>(stxingptr);
+    // extrapolate the fit through this xing
+    if(!this->extrapolate(exptr,tdir))throw cet::exception("RECO")<<"mu2e::KKTrack: Shell extrapolation failure"<< std::endl;
+    // store the xing
+    stxings_.push_back(stxingptr);
+  }
+
+  template <class KTRAJ> void KKTrack<KTRAJ>::addTCRVXing(KKCRVXINGPTR const& crvxingptr,TimeDir const& tdir) {
+    // convert to a generic Xing
+    std::shared_ptr<KinKal::ElementXing<KTRAJ>> exptr = std::static_pointer_cast<KinKal::ElementXing<KTRAJ>>(crvxingptr);
+    // extrapolate the fit throug this xing
+    if(!this->extrapolate(exptr,tdir))throw cet::exception("RECO")<<"mu2e::KKTrack: Shell extrapolation failure"<< std::endl;
+    // store the xing
+    crvxings_.push_back(crvxingptr);
   }
 
 }

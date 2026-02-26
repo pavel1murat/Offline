@@ -18,7 +18,6 @@
 #include "Offline/TrackerGeom/inc/Straw.hh"
 #include "Offline/TrackerGeom/inc/Tracker.hh"
 #include "Offline/Mu2eInterfaces/inc/ProditionsEntity.hh"
-#include "fhiclcpp/ParameterSet.h"
 
 namespace mu2e {
 
@@ -212,6 +211,9 @@ namespace mu2e {
       double getTimeOffsetStrawCal(size_t istraw)const { return _timeOffsetStrawCal[istraw]; }
 
       bool overrideDbTimeOffsets() const { return _overrideDbTimeOffsets; }
+
+      TrkTypes::TDCValue timeAnalogToDigital(double time, StrawId& sid) const;
+      double timeDigitalToAnalog(TrkTypes::TDCValue time, StrawId& sid) const;
 
     private:
       bool _overrideDbTimeOffsets; // for digitization we override Db parameters and zero all time offsets

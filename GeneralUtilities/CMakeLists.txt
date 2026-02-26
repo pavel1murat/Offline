@@ -13,6 +13,7 @@ cet_make_library(
       src/OrientationResolver.cc
       src/ParameterSetFromFile.cc
       src/ParameterSetHelpers.cc
+      src/ParseCLI.cc
       src/PathnameWithNextVersion.cc
       src/RMS.cc
       src/RootNameTitleHelper.cc
@@ -32,6 +33,7 @@ cet_make_library(
       ROOT::MathMore
       ROOT::GenVector
       Boost::headers
+      Boost::filesystem
       cetlib_except::cetlib_except
       CLHEP::CLHEP
       fhiclcpp::fhiclcpp

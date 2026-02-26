@@ -22,6 +22,13 @@ cet_build_plugin(FindMCPrimary art::module
       Offline::MCDataProducts
 )
 
+cet_build_plugin(GammaConversionPoints art::module
+    REG_SOURCE src/GammaConversionPoints_module.cc
+    LIBRARIES REG
+      art_root_io::TFileService_service
+      Offline::MCDataProducts
+)
+
 cet_build_plugin(GenEventCountReader art::module
     REG_SOURCE src/GenEventCountReader_module.cc
     LIBRARIES REG
@@ -37,6 +44,12 @@ cet_build_plugin(InFlightStepDumper art::module
       Offline::MCDataProducts
 )
 
+cet_build_plugin(MakeSurfaceSteps art::module
+    REG_SOURCE src/MakeSurfaceSteps_module.cc
+    LIBRARIES REG
+      Offline::MCDataProducts
+)
+
 cet_build_plugin(NullMCPrimary art::module
     REG_SOURCE src/NullMCPrimary_module.cc
     LIBRARIES REG
@@ -49,6 +62,15 @@ cet_build_plugin(ProtonTimeOffset art::module
       Offline::MCDataProducts
       Offline::Mu2eUtilities
       Offline::SeedService
+)
+
+
+cet_build_plugin(ProtonBunchTimeMCFromProtonBunchTime art::module
+    REG_SOURCE src/ProtonBunchTimeMCFromProtonBunchTime_module.cc
+    LIBRARIES REG
+      Offline::MCDataProducts
+      Offline::RecoDataProducts
+      Offline::Mu2eUtilities
 )
 
 cet_build_plugin(SelectRecoMC art::module
@@ -79,6 +101,13 @@ cet_build_plugin(StoppedParticlesFinder art::module
       Offline::DataProducts
       Offline::MCDataProducts
       Offline::Mu2eUtilities
+)
+
+cet_build_plugin(SurfaceStepDiag art::module
+    REG_SOURCE src/SurfaceStepDiag_module.cc
+    LIBRARIES REG
+      Offline::MCDataProducts
+      art_root_io::TFileService_service
 )
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/prolog.fcl ${CURRENT_BINARY_DIR} fcl/prolog.fcl)

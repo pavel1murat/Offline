@@ -7,6 +7,7 @@
 #include "Offline/CosmicRayShieldGeom/inc/CosmicRayShield.hh"
 #include "Offline/DataProducts/inc/CRSScintillatorBarIndex.hh"
 
+#include "Offline/CRVConditions/inc/CRVDigitizationPeriod.hh"
 #include "Offline/GeometryService/inc/DetectorSystem.hh"
 #include "Offline/GeometryService/inc/GeomHandle.hh"
 #include "Offline/GeometryService/inc/GeometryService.hh"
@@ -44,14 +45,18 @@ namespace mu2e
 
     private:
     std::string _crvStepsModuleLabel;
+    std::string _crvPhotonsModuleLabel;
     std::string _crvSiPMChargesModuleLabel;
     std::string _crvDigiModuleLabel;
     std::string _crvRecoPulsesModuleLabel;
     art::InputTag _protonBunchTimeTag;
 
     TNtuple  *_recoPulses;
+    TNtuple  *_recoPulses2;
     TH1F     *_sipmTimes0;
     TH1F     *_sipmTimes1;
+    TH1F     *_sipmTimeDiffs;
+    TH1F     *_photonTimeDiffs;
     TH1F     *_adcs0;
     TH1F     *_adcs1;
   };
@@ -59,6 +64,7 @@ namespace mu2e
   CRVTest::CRVTest(fhicl::ParameterSet const& pset) :
     art::EDAnalyzer(pset),
     _crvStepsModuleLabel(pset.get<std::string>("crvStepsModuleLabel")),
+    _crvPhotonsModuleLabel(pset.get<std::string>("crvPhotonsModuleLabel")),
     _crvSiPMChargesModuleLabel(pset.get<std::string>("crvSiPMChargesModuleLabel")),
     _crvDigiModuleLabel(pset.get<std::string>("crvDigiModuleLabel")),
     _crvRecoPulsesModuleLabel(pset.get<std::string>("crvRecoPulsesModuleLabel")),
@@ -67,8 +73,11 @@ namespace mu2e
     art::ServiceHandle<art::TFileService> tfs;
     art::TFileDirectory tfdir = tfs->mkdir("CrvSingleCounter");
     _recoPulses = tfdir.make<TNtuple>("RecoPulses", "RecoPulses", "event:barIndex:SiPM:nRecoPulses:recoPEs:recoPulseHeight:recoPulseWidth:recoPulseTime:recoLEtime:chi2:MCPEs:visibleEnergyDeposited");
+    _recoPulses2 = tfdir.make<TNtuple>("RecoPulses2", "RecoPulses2", "event:barIndex:t0:t1:t2:t3:PEs0:PEs1:PEs2:PEs3");
     _sipmTimes0 = tfdir.make<TH1F>("SiPMtimes0","SiPMtimes0", 100,800,900);
     _sipmTimes1 = tfdir.make<TH1F>("SiPMtimes1","SiPMtimes1", 100,800,900);
+    _sipmTimeDiffs = tfdir.make<TH1F>("SiPMtimeDiffs","SiPMtimeDiffs", 400,0,100);
+    _photonTimeDiffs = tfdir.make<TH1F>("photonTimeDiffs","photonTimeDiffs", 400,0,100);
     _adcs0 = tfdir.make<TH1F>("adcs0","adcs0", 100,800,900);
     _adcs1 = tfdir.make<TH1F>("adcs1","adcs1", 100,800,900);
   }
@@ -85,6 +94,9 @@ namespace mu2e
   {
     art::Handle<CrvStepCollection> crvStepsCollection;
     event.getByLabel(_crvStepsModuleLabel,"",crvStepsCollection);
+
+    art::Handle<CrvPhotonsCollection> crvPhotonsCollection;
+    event.getByLabel(_crvPhotonsModuleLabel,"",crvPhotonsCollection);
 
     art::Handle<CrvSiPMChargesCollection> crvSiPMChargesCollection;
     event.getByLabel(_crvSiPMChargesModuleLabel,"",crvSiPMChargesCollection);
@@ -117,7 +129,18 @@ namespace mu2e
           if(step.barIndex()==barIndex) visibleEnergyDeposited+=step.visibleEDep();
         }
       }
+      double avgPhotonTime0=0;
+      double avgPhotonTime1=0;
+      int nPhotons0=0;
+      int nPhotons1=0;
 
+      double avgTime0=0;
+      double avgTime1=0;
+      double charge0=0;
+      double charge1=0;
+
+      double ct[4]={0,0,0,0};
+      double cPEs[4]={0,0,0,0};
       for(int SiPM=0; SiPM<4; SiPM++)
       {
 
@@ -148,6 +171,23 @@ namespace mu2e
             }
           }
         }
+        ct[SiPM]=recoPulseTime;
+        cPEs[SiPM]=recoPEs;
+
+        for(size_t photonIndex=0; photonIndex<crvPhotonsCollection->size(); photonIndex++)
+        {
+          const CrvPhotons &crvPhotons = crvPhotonsCollection->at(photonIndex);
+          if(crvPhotons.GetScintillatorBarIndex()==barIndex && crvPhotons.GetSiPMNumber()==SiPM)
+          {
+            const std::vector<CrvPhotons::SinglePhoton> &singlePhotons = crvPhotons.GetPhotons();
+            for(size_t i=0; i<singlePhotons.size(); i++)
+            {
+              double time = singlePhotons[i]._time;
+              if(SiPM==0 || SiPM==2) {avgPhotonTime0+=time; ++nPhotons0;}
+              if(SiPM==1 || SiPM==3) {avgPhotonTime1+=time; ++nPhotons1;}
+            }
+          }
+        }
 
         for(size_t chargeIndex=0; chargeIndex<crvSiPMChargesCollection->size(); chargeIndex++)
         {
@@ -162,6 +202,8 @@ namespace mu2e
               MCPEs+=charge;
               if(SiPM==0 || SiPM==2) _sipmTimes0->Fill(time);
               if(SiPM==1 || SiPM==3) _sipmTimes1->Fill(time);
+              if(SiPM==0 || SiPM==2) {avgTime0+=time*charge; charge0+=charge;}
+              if(SiPM==1 || SiPM==3) {avgTime1+=time*charge; charge1+=charge;}
             }
           }
         }
@@ -172,18 +214,28 @@ namespace mu2e
           if(crvDigi.GetScintillatorBarIndex()==barIndex && crvDigi.GetSiPMNumber()==SiPM)
           {
             uint16_t startTDC=crvDigi.GetStartTDC();
-            const std::array<int16_t, CrvDigi::NSamples> &adcs = crvDigi.GetADCs();
-            for(size_t ii=0; ii<CrvDigi::NSamples; ii++)
+            const std::vector<int16_t> &adcs = crvDigi.GetADCs();
+            for(size_t ii=0; ii<adcs.size(); ++ii)
             {
               int16_t  adc=adcs.at(ii);
-              if(SiPM==0 || SiPM==2) _adcs0->Fill(TDC0time+(startTDC+ii)*12.55,adc);
-              if(SiPM==1 || SiPM==3) _adcs1->Fill(TDC0time+(startTDC+ii)*12.55,adc);
+              if(SiPM==0 || SiPM==2) _adcs0->Fill(TDC0time+(startTDC+ii)*CRVDigitizationPeriod,adc);
+              if(SiPM==1 || SiPM==3) _adcs1->Fill(TDC0time+(startTDC+ii)*CRVDigitizationPeriod,adc);
             }
           }
         }
 
         _recoPulses->Fill(eventID,barIndex.asInt(),SiPM,nRecoPulses,recoPEs,recoPulseHeight,recoPulseBeta,recoPulseTime,recoLEtime,chi2,MCPEs,visibleEnergyDeposited);
       }
+
+      avgTime0/=charge0;
+      avgTime1/=charge1;
+      _sipmTimeDiffs->Fill(avgTime1-avgTime0);
+
+      avgPhotonTime0/=nPhotons0;
+      avgPhotonTime1/=nPhotons1;
+      _photonTimeDiffs->Fill(avgPhotonTime1-avgPhotonTime0);
+
+      _recoPulses2->Fill(eventID,barIndex.asInt(),ct[0],ct[1],ct[2],ct[3],cPEs[0],cPEs[1],cPEs[2],cPEs[3]);
     }
 
   } // end analyze

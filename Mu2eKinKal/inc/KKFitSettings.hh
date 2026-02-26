@@ -19,10 +19,8 @@
 #include "Offline/Mu2eKinKal/inc/StrawXingUpdater.hh"
 namespace mu2e {
   namespace Mu2eKinKal{
-
-    using Name    = fhicl::Name;
-    using Comment = fhicl::Comment;
-
+    using fhicl::Name;
+    using fhicl::Comment;
     // struct for defining the KinKal Config object and updaters
     struct KinKalConfig {
       fhicl::Atom<int> printLevel { Name("PrintLevel"), Comment("Diagnostic printout Level") };
@@ -47,11 +45,17 @@ namespace mu2e {
       BkgANNSHUSettings bkgshuConfig{ Name("BkgANNSHUSettings"), Comment(BkgANNSHU::configDescription()) };
       using Chi2SHUSettings = fhicl::OptionalSequence<fhicl::Tuple<unsigned,float,float,float,std::string,std::string,std::string,std::string,int>>;
       Chi2SHUSettings combishuConfig{ Name("Chi2SHUSettings"), Comment(Chi2SHU::configDescription()) };
-      using StrawXingUpdaterSettings = fhicl::Sequence<fhicl::Tuple<float,float,float,bool,int>>;
+      using StrawXingUpdaterSettings = fhicl::Sequence<fhicl::Tuple<float,float,bool,int>>;
       StrawXingUpdaterSettings sxuConfig{ Name("StrawXingUpdaterSettings"), Comment(StrawXingUpdater::configDescription()) };
     };
     // function to convert fhicl configuration to KinKal Config object
     KinKal::Config makeConfig(KinKalConfig const& fconfig);
+
+    // struct for final fit configuration. This just changes convergence parameters
+    struct KKFinalConfig {
+      fhicl::Atom<int> maxniter { Name("MaxNIter"), Comment("Maximum number of algebraic iteration steps in each fit meta-iteration") };
+      fhicl::Atom<float> convdchisq { Name("ConvergenceDeltaChisq"), Comment("Maximum Chisq/DOF change between iterations to define convergence") };
+    };
 
     // struct for configuring KKFit object
     struct KKFitConfig {
@@ -77,15 +81,20 @@ namespace mu2e {
       fhicl::Atom<float> maxStrawHitDOCA { Name("MaxStrawHitDOCA"), Comment("Max DOCA to add a hit (mm)") };
       fhicl::Atom<float> maxStrawHitDt { Name("MaxStrawHitDt"), Comment("Max Detla time to add a hit (ns)") };
       fhicl::Atom<int> maxDStraw { Name("MaxDStraw"), Comment("Maximum (integer) straw separation when adding straw hits") };
+      fhicl::Atom<bool> skipStrawCheck { Name("SkipStrawCheck"), Comment("Skip rho and panel longitudinal checks when adding straws") };
+      fhicl::Atom<float> addStrawMinDz { Name("AddStrawMinDz"), Comment("For tracks more vertical than this add all straws") };
+      fhicl::Atom<int> strawNBuffer { Name("StrawNBuffer"), Comment("Project track N straws to calculate v span when adding straws") };
       fhicl::Atom<float> maxStrawDOCA { Name("MaxStrawDOCA"), Comment("Max DOCA to add straw material (mm)") };
       fhicl::Atom<float> maxStrawDOCAConsistency { Name("MaxStrawDOCAConsistency"), Comment("Max DOCA chi-consistency to add straw material") };
+      fhicl::Atom<float> maxStrawUposBuff { Name("MaxStrawUposBuffer"), Comment("Max Upos beyond strawlength to add straw material (mm)") };
+      fhicl::Atom<bool> saveHitCalib { Name("SaveHitCalibInfo"), Comment("Save hit calib info in KalSeed") };
       // extension and sampling
+      fhicl::Atom<std::string> saveTraj { Name("SaveTrajectory"), Comment("How to save the trajectory in the KalSeed: None, Full, Detector, or T0 (1 segment containing t0)") };
+      fhicl::Atom<bool> saveDomains { Name("SaveDomains"), Comment("Save the Bfield domain walls in the KalSeed: this will follow the range specified by SaveTrajectory") };
+      fhicl::Sequence<std::string> sampleSurfaces { Name("SampleSurfaces"), Comment("Sample the final fit at these surfaces") };
+      fhicl::Atom<float> interTol { Name("IntersectionTolerance"), Comment("Tolerance for surface intersections (mm)") };
       fhicl::Atom<bool> sampleInRange { Name("SampleInRange"), Comment("Require sample times to be inside the fit trajectory time range") };
       fhicl::Atom<bool> sampleInBounds { Name("SampleInBounds"), Comment("Require sample intersection point be inside surface bounds (within tolerance)") };
-      fhicl::Atom<float> sampleTol { Name("SampleTolerance"), Comment("Tolerance for sample surface intersections (mm)") };
-      fhicl::Atom<float> sampleTBuff { Name("SampleTimeBuffer"), Comment("Time buffer for sample intersections (nsec)") };
-      fhicl::Sequence<std::string> sampleSurfaces { Name("SampleSurfaces"), Comment("When creating the KalSeed, sample the fit at these surfaces") };
-      fhicl::Atom<std::string> saveTraj { Name("SaveTrajectory"), Comment("How to save the trajectory in the KalSeed: None, Full, or T0 (just the t0 segment)") };
     };
     // struct for configuring a KinKal fit module
     struct KKModuleConfig {
@@ -96,9 +105,17 @@ namespace mu2e {
       fhicl::Atom<int> printLevel { Name("PrintLevel"), Comment("Diagnostic printout Level"), 0 };
       fhicl::Sequence<float> seederrors { Name("SeedErrors"), Comment("Initial value of seed parameter errors (rms, various units)") };
       fhicl::Atom<bool> saveAll { Name("SaveAllFits"), Comment("Save all fits, whether they suceed or not"),false };
-      fhicl::Sequence<std::string> extrapSurfs { Name("ExtrapolateSurfaces"), Comment("Extrapolate successful fits to these surfaces") };
-      fhicl::Atom<float> extrapTol { Name("ExtrapolationTolerance"), Comment("Tolerance on fractional momemtum precision when extrapolating fits") };
-      fhicl::Atom<float> extrapMaxDt { Name("ExtrapolationMaxDt"), Comment("Maximum time to extrapolate a fit") };
+    };
+  // Extrapolation configuration
+    struct KKExtrapConfig {
+      fhicl::Atom<int> Debug { Name("Debug"), Comment("Debug level"), 0 };
+      fhicl::Atom<float> btol { Name("BCorrTolerance"), Comment("Tolerance on BField correction momentum fractional accuracy (dimensionless)") };
+      fhicl::Atom<float> interTol { Name("IntersectionTolerance"), Comment("Tolerance for surface intersections (mm)") };
+      fhicl::Atom<float> MaxDt { Name("MaxDt"), Comment("Maximum time to extrapolate a fit (ns)") };
+      fhicl::Atom<bool> BackToTracker { Name("BackToTracker"), Comment("Extrapolate reflecting tracks back to the tracker") };
+      fhicl::Atom<bool> ToTrackerEnds { Name("ToTrackerEnds"), Comment("Extrapolate tracks to the tracker ends") };
+      fhicl::Atom<bool> Upstream { Name("Upstream"), Comment("Extrapolate tracks upstream") };
+      fhicl::Atom<bool> ToOPA { Name("ToOPA"), Comment("Test tracks for intersection with the OPA") };
     };
   }
 }
