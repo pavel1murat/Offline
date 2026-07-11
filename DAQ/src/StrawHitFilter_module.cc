@@ -20,6 +20,7 @@
 #include "Offline/RecoDataProducts/inc/StrawHit.hh"
 
 #include "TRACE/tracemf.h"
+#define TRACE_NAME "StrawHitFilter"
 
 // c++
 #include <format>
@@ -245,6 +246,8 @@ namespace mu2e {
 //-----------------------------------------------------------------------------
     _nshg          = 0;
 
+    float _edepp = 0;
+    
     for (int i = 0; i<_nsht; ++i) {
       const mu2e::StrawHit* sh = &_shc->at(i);
       
@@ -252,6 +255,8 @@ namespace mu2e {
       int pnl  = sh->strawId().panel();
       const TrkPanelMap::Row* tpm = _trkPanelMap->panel_map_by_offline_ind(pln,pnl);
       int hit_mnid = tpm->mnid();
+
+      if (sh->energyDep() > _edepp) _edepp = sh->energyDep();
 
       bool skip = false;
 
@@ -271,9 +276,15 @@ namespace mu2e {
       _nshg++;
     }
 
+    //    TLOG(TLVL_DEBUG+1) << std::format("eventNumber:{:8d} _nsht:{} _nshg:{}",
+    // _event->event(),_nsht,_nshg);
+
     if (_fillHistograms) fill_histograms(&_hist[0]);
 
-    if (_debugMode) print_(std::format("-- END, n good hits:{}",_nshg));
+    if (_debugMode) {
+      std::cout << std::format("eventNumber:{:8d} _nsht:{} _nshg:{} _edepp:{:8.5f}\n",
+                               _event->event(),_nsht,_nshg,_edepp);
+    }
 
     bool passed = false;
     if (_nshg >= _minNGoodHits) {

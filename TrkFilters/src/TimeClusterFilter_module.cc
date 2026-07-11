@@ -31,15 +31,17 @@ namespace mu2e
         fhicl::Atom<art::InputTag>      timeClusterCollection{    Name("timeClusterCollection"),      Comment("TimeClusterCollection label") };
         fhicl::Atom<art::InputTag>      comboHitCollection   {    Name("ComboHitCollection"),         Comment("ComboHitCollection for timecluster"),"TTmakePH"};
         fhicl::Atom<bool>               requireCaloCluster   {    Name("requireCaloCluster"),         Comment("Require caloCluster") };
-        fhicl::Atom<unsigned>           minNStrawHits        {    Name("minNStrawHits"),                   Comment("minNStrawHits")};
+        fhicl::Atom<unsigned>           minNStrawHits        {    Name("minNStrawHits"),              Comment("minNStrawHits")};
         fhicl::Atom<unsigned>           minNPlanes           {    Name("minNPlanes"),                 Comment("Minimum planes hit"), 0};
         fhicl::Atom<unsigned>           minPlaneSpan         {    Name("minPlaneSpan"),               Comment("Minimum difference between first and last hit plane"), 0};
+        fhicl::Atom<float>              minEDep              {    Name("minEDep"),                    Comment("Min eDep of a good hit"), 0.0};
+        fhicl::Atom<unsigned>           minNGoodHits         {    Name("minNGoodHits"),               Comment("Min N hits with eDep >= MinEDep"), 0};
         fhicl::Atom<int>                debugLevel           {    Name("debugLevel"),                 Comment("Debug"),0 };
-        fhicl::Atom<bool>               noFilter             {    Name("noFilter"),                 Comment("Don't filter anything"),0 };
+        fhicl::Atom<bool>               noFilter             {    Name("noFilter"),                   Comment("Don't filter anything"),0 };
       };
-
-      using Parameters = art::EDFilter::Table<Config>;
-
+    
+    using Parameters = art::EDFilter::Table<Config>;
+    
       explicit TimeClusterFilter(const Parameters& config);
 
     private:
@@ -52,6 +54,8 @@ namespace mu2e
       unsigned      _minnhits;
       unsigned      _minnplanes;
       unsigned      _minplanespan;
+      float         _minedep;
+      unsigned      _minngoodhits;
       int           _debug;
       // counters
       unsigned      _nevt, _npass;
@@ -64,6 +68,8 @@ namespace mu2e
     _chTag   (conf().comboHitCollection()),
     _hascc   (conf().requireCaloCluster()),
     _minnhits(conf().minNStrawHits()),
+    _minedep (conf().minEDep()),
+    _minngoodhits(conf().minNGoodHits()),
     _minnplanes(conf().minNPlanes()),
     _minplanespan(conf().minPlaneSpan()),
     _debug   (conf().debugLevel()),
@@ -91,6 +97,7 @@ namespace mu2e
         std::cout << moduleDescription().moduleLabel() << " nStrawHits = " << tc.nStrawHits() << " t0 = " << tc.t0().t0() << std::endl;
       }
       bool planeok = true;
+      unsigned ngh = 0;                 // n("good" hits)
       if (_minnplanes > 0 || _minplanespan > 0){
         planeok = false;
         int minplane = StrawId::_nplanes;
@@ -106,7 +113,11 @@ namespace mu2e
             pmap[iplane] = 1;
             nplanes++;
           }
+          if (ch.energyDep() >= _minedep) {
+            ngh++;
+          }
         }
+
         unsigned planespan = 0;
         if (maxplane > minplane) planespan = maxplane-minplane;
         if (nplanes >= _minnplanes && planespan >= _minplanespan){
@@ -114,7 +125,7 @@ namespace mu2e
         }
       }
       if( (!_hascc || tc.caloCluster().isNonnull()) &&
-          tc.nStrawHits() >= _minnhits && planeok) {
+          (tc.nStrawHits() >= _minnhits && planeok) && (ngh >= _minngoodhits)){
         retval = true;
         ++_npass;
         // Fill the trigger info object
