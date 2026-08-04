@@ -315,7 +315,7 @@ void mu2e::StrawDigisFromArtdaqFragments::produce(art::Event& event) {
 // loop over them
 //-----------------------------------------------------------------------------
       int n_fragments = handle->size();
-
+      
       if (debugMode_) {
         print_(e_DEBUG,std::format("-- next fragment collection with n_fragments:{}",n_fragments));
       }
@@ -479,20 +479,14 @@ void mu2e::StrawDigisFromArtdaqFragments::produce(art::Event& event) {
 //-----------------------------------------------------------------------------
 // bad mnid. Likely, corrupted data block. For now, skip the hit data and proceed with the next hit
 //-----------------------------------------------------------------------------
-                    if (debugBit_[51] == 0) print_(e_ERROR,std::format("TrkPanelMap mapping for mnid:{} is missing, skip hit data",mnid));
+                    if (debugBit_[51] == 0) print_(e_ERROR,std::format("corrupted mnid:{}, skip hit data",mnid));
                     continue;
                   }
-                  print_(e_WARNING,std::format("TrkPanelMap mapping for mnid:{} is missing, using offline fallback",mnid));
+                  print_(e_WARNING,std::format("panel map for mnid:{}, using offline fallback",mnid));
                 }
               }
-//-----------------------------------------------------------------------------
-// the MnID in the payload is cross-checked against the hardware address only in
-// the "byLink" mode. In "byMnid" the row was looked up by mnid, so tpm->mnid() is
-// equal to mnid by construction and there is nothing left to compare it against;
-// in "geographic" there is no row at all. Restricting the test to "byLink" does
-// not change behaviour - in the other two modes it could never fire.
-//-----------------------------------------------------------------------------
-              if (addressing_ == Addressing::byLink && tpm != nullptr && tpm->mnid() != mnid) {
+// in principle, could this could become an 'else if'
+              if (!forceOfflineAddressing_ && tpm != nullptr && tpm->mnid() != mnid) {
                 print_(e_ERROR,std::format("mnid:{:3d} tpm->mnid():{:3d} hit chid:{:04x} inconsistent with the dtc_id:{:2d} and link_id:{}",
                                            mnid,tpm->mnid(),hit_data->StrawIndex, dtc_id, link_id));
 //-----------------------------------------------------------------------------
