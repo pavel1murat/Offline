@@ -43,6 +43,8 @@ public:
     fhicl::Atom<int> debug{Name("debugLevel"), Comment("set to 1 for debug prints")};
     fhicl::Atom<int> minnsh{Name("minNStrawHits"), Comment("minimum number of straw hits ")};
     fhicl::Atom<int> minnpanels{Name("minNPanels"), Comment("minimum number of panels ")};
+    fhicl::Atom<float> minedep{Name("minEDep"), Comment("minimal hit energy dep")};
+    fhicl::Atom<int> minngoodhits{Name("minNGoodHits"), Comment("minimal number of hits with edep > minEDep")};
     fhicl::OptionalAtom<int> maxnsh{Name("maxNStrawHits"), Comment("maximum number of straw hits ")};
     fhicl::Atom<int> timewindow{Name("TimeWindow"), Comment("Width of time window in ns")};
     fhicl::Atom<bool> usetimewindow{Name("useTimeWindow"), Comment("Use timewindow cut")};
@@ -66,6 +68,8 @@ private:
   int _debug;
   int _minnsh;
   int _minnpanels;
+  float _minedep;
+  int   _minngoodhits;
   bool _hasmaxnsh;
   int _maxnsh;
   bool _usetimeWindow;
@@ -88,6 +92,8 @@ SimpleTimeCluster::SimpleTimeCluster(const Parameters& conf) :
     _debug(conf().debug()),
     _minnsh(conf().minnsh()),
     _minnpanels(conf().minnpanels()),
+    _minedep(conf().minedep()),
+    _minngoodhits(conf().minngoodhits()),
     _hasmaxnsh(false),
     _maxnsh(0),
     _usetimeWindow(conf().usetimewindow()),
@@ -239,6 +245,7 @@ void SimpleTimeCluster::findClusters(TimeClusterCollection& tccol) {
     chCount = 0;
     double time1 = ordChCol[peakStart[n]].correctedTime();
     double time2 = ordChCol[peakEnd[n]].correctedTime();
+    int nhg = 0;
     for (size_t i = 0; i < _chcol->size(); i++) {
 
       if (_testflag && !goodHit(_chcol->at(i).flag()))
@@ -253,11 +260,18 @@ void SimpleTimeCluster::findClusters(TimeClusterCollection& tccol) {
       avg += _chcol->at(i).correctedTime();
       tclust._strawHitIdxs.push_back(i);
       chCount++;
+      // count "good" hits, a "good" hit defined as a hit with edep > 0.5 keV
+      if (_chcol->at(i).energyDep() >= _minedep) {
+        nhg++;
+      }
     }
     int npanels = std::accumulate(hits_in_panel.begin(),hits_in_panel.end(),0);
     if (_minnpanels > 0 && npanels < _minnpanels)
       continue;
-
+                                        // require at least two "good" hits
+    if (nhg < _minngoodhits)
+      continue;
+    
     tclust._t0 = TrkT0(avg / chCount, (ordChCol[peakEnd[n]].correctedTime() - ordChCol[peakStart[n]].correctedTime()) / 2.);
     tccol.push_back(tclust);
   }

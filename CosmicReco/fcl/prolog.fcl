@@ -50,6 +50,8 @@ CosmicReco : { @table::CosmicReco
       debugLevel : 0
       minNStrawHits : 2
       minNPanels : 1
+      minEDep    : 0.0005
+      minNGoodHits : 2
       TimeWindow : 100
       useTimeWindow : false
       TimeStep : 20
