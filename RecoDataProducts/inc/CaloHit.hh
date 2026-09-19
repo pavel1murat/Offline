@@ -54,7 +54,7 @@ namespace mu2e {
 
    using CaloHitPtr        = art::Ptr<CaloHit>;
    using CaloHitPtrVector  = std::vector<CaloHitPtr>;
-   using CaloHitCollection = std::vector<mu2e::CaloHit> ;
+   using CaloHitCollection = std::vector<mu2e::CaloHit>;
    using CaloHitRemapping  = std::map<art::Ptr<CaloHit>,art::Ptr<CaloHit>>;
 }
 
