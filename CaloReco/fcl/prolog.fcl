@@ -48,6 +48,7 @@ CaloReco : {
       ProtonBunchTimeTag  : "EWMProducer"
       UseProtonBunchTime  : true
       maxChi2Cut          : 2.0
+      globalDt            : 0.0           ## 2026-08-04 PM
       maxPlots            : 50
       diagLevel           : 0
    }

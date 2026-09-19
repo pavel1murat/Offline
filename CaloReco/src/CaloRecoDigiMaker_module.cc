@@ -38,6 +38,7 @@ public:
     fhicl::Atom<std::string>                            processorStrategy  { Name("processorStrategy"),  Comment("Digi reco processor name") };
     fhicl::Atom<double>                                 digiSampling       { Name("digiSampling"),       Comment("Calo ADC sampling time (ns)") };
     fhicl::Atom<double>                                 maxChi2Cut         { Name("maxChi2Cut"),         Comment("Chi2 cut for keeping reco digi") };
+    fhicl::Atom<double>                                 globalDt           { Name("globalDt"),           Comment("<T(cal)-T(trk)>") };
     fhicl::Atom<int>                                    maxPlots           { Name("maxPlots"),           Comment("Maximum number of waveform plots") };
     fhicl::Atom<int>                                    diagLevel          { Name("diagLevel"),          Comment("Diagnosis level") };
   };
@@ -51,6 +52,7 @@ public:
       processorStrategy_ (config().processorStrategy()),
       digiSampling_      (config().digiSampling()),
       maxChi2Cut_        (config().maxChi2Cut()),
+      globalDt_          (config().globalDt()),
       maxPlots_          (config().maxPlots()),
       diagLevel_         (config().diagLevel()) {
     produces<CaloRecoDigiCollection>();
@@ -92,6 +94,7 @@ private:
   const std::string processorStrategy_;
   double digiSampling_;
   double maxChi2Cut_;
+  double globalDt_;
   int maxPlots_;
   int diagLevel_;
   std::unique_ptr<CaloWaveformProcessor> waveformProcessor_;
@@ -105,20 +108,27 @@ void CaloRecoDigiMaker::produce(art::Event& event) {
   if (diagLevel_ > 0)
     std::cout << "[CaloRecoDigiMaker::produce] begin" << std::endl;
 
-  const auto& caloDigisH = event.getValidHandle(caloDigisToken_);
   auto recoCaloDigiColl = std::make_unique<CaloRecoDigiCollection>();
 
-  double pbtOffset = 0;
-  if (usePBT_) {
-    auto pbtH = event.getValidHandle(pbttoken_);
-    const ProtonBunchTime& pbt(*pbtH);
-    pbtOffset = pbt.pbtime_;
+  try {
+    const auto& caloDigisH = event.getValidHandle(caloDigisToken_);
+    double pbtOffset = 0;
+    if (usePBT_) {
+      auto pbtH = event.getValidHandle(pbttoken_);
+      const ProtonBunchTime& pbt(*pbtH);
+      pbtOffset = pbt.pbtime_;
+    }
+  
+    mu2e::CalCalib const& calCalib = calCalibHandle_.get(event.id());
+  
+    extractRecoDigi(caloDigisH, *recoCaloDigiColl, pbtOffset, calCalib);
   }
-
-  mu2e::CalCalib const& calCalib = calCalibHandle_.get(event.id());
-
-  extractRecoDigi(caloDigisH, *recoCaloDigiColl, pbtOffset, calCalib);
-
+  catch (...) {
+    if(diagLevel_ > 0) {
+      std::cout << "no digi collection\n";
+    }
+  }
+  
   event.put(std::move(recoCaloDigiColl));
 
   if (diagLevel_ > 0)
@@ -139,7 +149,8 @@ void CaloRecoDigiMaker::extractRecoDigi(const art::ValidHandle<CaloDigiCollectio
   std::vector<double> x{}, y{};
   for (const auto& caloDigi : caloDigis) {
     int SiPMID = caloDigi.SiPMID();
-    double t0 = caloDigi.t0();
+    // [2026-08-04 PM]double t0 = caloDigi.t0() - calCalib.timeoffset(SiPMID);
+    double t0 = caloDigi.t0()*digiSampling_ - calCalib.timeoffset(SiPMID) - globalDt_;
     double adc2MeV = calCalib.ADC2MeV(SiPMID);
 
     const std::vector<int>& waveform = caloDigi.waveform();
