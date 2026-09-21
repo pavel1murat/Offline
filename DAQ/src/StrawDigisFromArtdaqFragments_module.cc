@@ -186,11 +186,11 @@ void mu2e::StrawDigisFromArtdaqFragments::print_(int Level, const std::string& M
   if (Level == e_DEBUG) {
                                         // debug
     MF_LOG_TRACE("MAKE_DIGI_NT") << s << ss.back() << ":" << location.line() << " : " << Message;
-  } 
+  }
   else if (Level == e_INFO) {
                                         // info
     MF_LOG_VERBATIM("MAKE_DIGI_NT")
-      << s << ss.back() << ":" << location.line() 
+      << s << ss.back() << ":" << location.line()
       //            << location.function_name()
       << " : " << Message;
   }
@@ -198,11 +198,11 @@ void mu2e::StrawDigisFromArtdaqFragments::print_(int Level, const std::string& M
     MF_LOG_PRINT("MAKE_DIGI_NT") << "WARNING: " << s << ss.back() << ":" << location.line() << " : " << Message;
   }
 
-  else if (Level == e_ERROR) {                // 
+  else if (Level == e_ERROR) {                //
     MF_LOG_PROBLEM("MAKE_DIGI_NT") << "ERROR: " << s << ss.back() << ":" << location.line() << " : " << Message;
   }
 
-  else if (Level == e_SEVERE) {                // 
+  else if (Level == e_SEVERE) {                //
     MF_LOG_ABSOLUTE("MAKE_DIGI_NT") << "SEVERE: " << s << ss.back() << ":" << location.line() << " : " << Message;
   }
 }
@@ -281,7 +281,7 @@ void mu2e::StrawDigisFromArtdaqFragments::produce(art::Event& event) {
 // loop over them
 //-----------------------------------------------------------------------------
       int n_fragments = handle->size();
-      
+
       if (debugMode_) {
         print_(e_DEBUG,std::format("-- next fragment collection with n_fragments:{}",n_fragments));
       }
@@ -444,10 +444,10 @@ void mu2e::StrawDigisFromArtdaqFragments::produce(art::Event& event) {
 //-----------------------------------------------------------------------------
 // bad mnid. Likely, corrupted data block. For now, skip the hit data and proceed with the next hit
 //-----------------------------------------------------------------------------
-                    if (debugBit_[51] == 0) print_(e_ERROR,std::format("corrupted mnid:{}, skip hit data",mnid));
+                    if (debugBit_[51] == 0) print_(e_ERROR,std::format("TrkPanelMap mapping for mnid:{} is missing, skip hit data",mnid));
                     continue;
                   }
-                  print_(e_WARNING,std::format("panel map for mnid:{}, using offline fallback",mnid));
+                  print_(e_WARNING,std::format("TrkPanelMap mapping for mnid:{} is missing, using offline fallback",mnid));
                 }
               }
 // in principle, could this could become an 'else if'
