@@ -227,23 +227,23 @@ namespace mu2e {
       _channelMaterial          = config.getString( "trackerSupport.channel.material"           );
       _electronicsSpaceMaterial = config.getString( "trackerSupport.electronicsSpace.material"  );
 
-      const auto geomOptions = art::ServiceHandle<GeometryService>()->geomOptions();
-      geomOptions->loadEntry( config, "trackerElectronicsKey",   "trackerSupport.electronics.key");
-      geomOptions->loadEntry( config, "trackerElectronicsShield","trackerSupport.electronics.key.shield");
-      _EBKeyVisible          = geomOptions->isVisible("trackerElectronicsKey");
-      _EBKeySolid            = geomOptions->isSolid("trackerElectronicsKey");
-      _EBKeyShieldVisible    = geomOptions->isVisible("trackerElectronicsShield");
-      _EBKeyShieldSolid      = geomOptions->isSolid("trackerElectronicsShield");
+      // const auto geomOptions = art::ServiceHandle<GeometryService>()->geomOptions();
+      // geomOptions->loadEntry( config, "trackerElectronicsKey",   "trackerSupport.electronics.key");
+      // geomOptions->loadEntry( config, "trackerElectronicsShield","trackerSupport.electronics.key.shield");
+      // _EBKeyVisible          = geomOptions->isVisible("trackerElectronicsKey");
+      // _EBKeySolid            = geomOptions->isSolid("trackerElectronicsKey");
+      // _EBKeyShieldVisible    = geomOptions->isVisible("trackerElectronicsShield");
+      // _EBKeyShieldSolid      = geomOptions->isSolid("trackerElectronicsShield");
 
       _EBKeyHalfLength         = config.getDouble("trackerSupport.electronics.key.halfLength");
       _EBKeyShieldHalfLength   = config.getDouble("trackerSupport.electronics.key.shieldHalfLength");
       _EBKeyInnerRadius        = config.getDouble("trackerSupport.electronics.key.innerRadius");
       _EBKeyOuterRadius        = config.getDouble("trackerSupport.electronics.key.outerRadius");
       _EBKeyShiftFromPanelFace = config.getDouble("trackerSupport.electronics.key.shiftFromPanelFace");
-      //_EBKeyVisible            = config.getBool(  "trackerSupport.electronics.key.visible");
-      //_EBKeySolid              = config.getBool(  "trackerSupport.electronics.key.solid");
-      //_EBKeyShieldVisible      = config.getBool(  "trackerSupport.electronics.key.shieldVisible");
-      //_EBKeyShieldSolid        = config.getBool(  "trackerSupport.electronics.key.shieldSolid");
+      _EBKeyVisible            = config.getBool(  "trackerSupport.electronics.key.visible");
+      _EBKeySolid              = config.getBool(  "trackerSupport.electronics.key.solid");
+      _EBKeyShieldVisible      = config.getBool(  "trackerSupport.electronics.key.shield.visible");
+      _EBKeyShieldSolid        = config.getBool(  "trackerSupport.electronics.key.shield.solid");
       _EBKeyMaterial           = config.getString("trackerSupport.electronics.key.material");
       _EBKeyShieldMaterial     = config.getString("trackerSupport.electronics.key.shieldMaterial");
       _EBKeyPhiRange           = config.getDouble("trackerSupport.electronics.key.phiRange")*CLHEP::degree;
