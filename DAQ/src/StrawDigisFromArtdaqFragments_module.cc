@@ -158,7 +158,7 @@ mu2e::StrawDigisFromArtdaqFragments::StrawDigisFromArtdaqFragments(const art::ED
     int index(0), value(0);
     key               = debugBits_[i].data();
     sscanf(key,"bit%i:%i",&index,&value);
-    if (index < kNDebugBits) {
+    if ((index >=0) and (index < kNDebugBits)) {
       debugBit_[index]  = value;
       print_(e_INFO,std::format("debug bit {:4d} is set to {}",index,debugBit_[index]));
     }
@@ -258,9 +258,8 @@ void mu2e::StrawDigisFromArtdaqFragments::produce(art::Event& event) {
 //-----------------------------------------------------------------------------
 // defined by the first hit
 //-----------------------------------------------------------------------------
-  artdaq::Fragments    fragments;
-  artdaq::FragmentPtrs containerFragments;
-
+// 2026-09-21 PM  artdaq::Fragments    fragments;
+// 2026-09-21 PM  artdaq::FragmentPtrs containerFragments;
   auto fragmentHandles = event.getMany<std::vector<artdaq::Fragment>>();
 
   if (debugMode_ > 0) {
@@ -271,16 +270,16 @@ void mu2e::StrawDigisFromArtdaqFragments::produce(art::Event& event) {
   for (auto handle : fragmentHandles) {
     if (!handle.isValid() || handle->empty())     continue;
 
-    if (handle->front().type() == artdaq::Fragment::ContainerFragmentType) {
-      for (const auto& cont : *handle) {
-        artdaq::ContainerFragment contf(cont);
-        for (size_t ii = 0; ii < contf.block_count(); ++ii) {
-          containerFragments.push_back(contf[ii]);
-          fragments.push_back(*containerFragments.back());
-        }
-      }
-    }
-    else {
+// 2026-09-21 PM    if (handle->front().type() == artdaq::Fragment::ContainerFragmentType) {
+// 2026-09-21 PM      for (const auto& cont : *handle) {
+// 2026-09-21 PM        artdaq::ContainerFragment contf(cont);
+// 2026-09-21 PM        for (size_t ii = 0; ii < contf.block_count(); ++ii) {
+// 2026-09-21 PM          containerFragments.push_back(contf[ii]);
+// 2026-09-21 PM          fragments.push_back(*containerFragments.back());
+// 2026-09-21 PM        }
+// 2026-09-21 PM      }
+// 2026-09-21 PM    }
+// 2026-09-21 PM    else {
 //-----------------------------------------------------------------------------
 // the 'handle' handles a list of artdaq fragments
 // each artdaq fragment corresponds to a single DTC, or a plane
@@ -550,7 +549,7 @@ void mu2e::StrawDigisFromArtdaqFragments::produce(art::Event& event) {
           roc_data += (nhits*np_per_hit_+1)*packet_size;
         }
       }
-    }
+      // 2026-09-21 PM    }
   }
 
   intInfo->setNTrackerHits(straw_digis->size());
