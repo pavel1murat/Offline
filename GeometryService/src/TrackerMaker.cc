@@ -221,8 +221,6 @@ namespace mu2e {
       _electronicsG10Material   = config.getString( "trackerSupport.electronics.g10.material"   );
       _electronicsCuHhalfLength = config.getDouble( "trackerSupport.electronics.cu.halfLength"  );
       _electronicsCuMaterial    = config.getString( "trackerSupport.electronics.cu.material"    );
-      _channelZOffset           = config.getDouble( "trackerSupport.channel.zOffset"            );
-      _panelZOffset             = config.getDouble( "trackerSupport.panel.zOffset", 0.0 );
       _channelDepth             = config.getDouble( "trackerSupport.channel.depth"              );
       _channelMaterial          = config.getString( "trackerSupport.channel.material"           );
       _electronicsSpaceMaterial = config.getString( "trackerSupport.electronicsSpace.material"  );
@@ -260,6 +258,8 @@ namespace mu2e {
 
     }
 
+    _channelZOffset           = config.getDouble( "trackerSupport.channel.zOffset",0.0);
+    _panelZOffset             = config.getDouble( "trackerSupport.panel.zOffset"  ,0.0);
     //string tracker.mat.manifold  = "G4_Al";  // Placeholder.
 
     // Also define some parameters that may become variable some day.
