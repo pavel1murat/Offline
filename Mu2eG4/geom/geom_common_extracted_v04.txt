@@ -16,7 +16,7 @@ bool garage.extractOPA_IPA_ST = false; //include the OPA, IPA, and Stopping Targ
 bool hasSTM             = false;
 
 // Offset the detector system
-double mu2e.detectorSystemZ0 = 24171.;   // mm
+double mu2e.detectorSystemZ0 = 22935.;   // 24171.;  // mm
 
 //Reduce shielding block above DS, only cover some of extracted detectors
 vector<double> building.dsArea.hatchblock.xPositions = {
@@ -55,14 +55,15 @@ double ExtShieldDownstream.detecHoleZ = 32007.0;
 double mbs.MBSCZ              = 29273.0;
 
 // Put Tracker in garage
-double tracker.mother.z0          =  24175.0;  // Garage position only
-double tracker.z0                   = 24171.0; // Garage position only
+double tracker.mother.z0            = 22939.0; // 24175.; Garage position only
+double tracker.z0                   = 22935.0; // 24171.; Garage position only
 
 
 // Put Crystal calorimeter in garage
-double calorimeter.caloMotherZ0                 = 25842;
-double calorimeter.caloMotherZ1                 = 27220;
-double calorimeter.calorimeterZFront            = 25843.0;
+double calorimeter.caloMotherZ0                 = 25106.0;  // 25842;
+double calorimeter.caloMotherZ1                 = 27234.0;  // 27220;
+double calorimeter.calorimeterZFront            = 25107.0;  // 25843;
+vector<double> calorimeter.diskZMotherShift     = {0.0,1075.0}; // from Richie
 
 //CRV in the extracted position for the detector KPP
 //v04 includes the muon taggers
