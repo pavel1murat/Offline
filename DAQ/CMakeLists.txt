@@ -196,33 +196,6 @@ cet_build_plugin(StrawHitFilter art::module
   ROOT::Gui
 )
 
-# 2026-09-21 PMcet_build_plugin(StrawDigiFilter art::module
-# 2026-09-21 PM  REG_SOURCE src/StrawDigiFilter_module.cc
-# 2026-09-21 PM  LIBRARIES REG
-# 2026-09-21 PM  Offline::DAQ
-# 2026-09-21 PM  Offline::RecoDataProducts
-# 2026-09-21 PM  Offline::DataProducts
-# 2026-09-21 PM  artdaq-core-mu2e::Data
-# 2026-09-21 PM  art_root_io::TFileService_service
-# 2026-09-21 PM  ROOT::Hist
-# 2026-09-21 PM  ROOT::Tree
-# 2026-09-21 PM  ROOT::Core
-# 2026-09-21 PM  ROOT::RIO
-# 2026-09-21 PM  ROOT::Gui
-# 2026-09-21 PM)
-
-cet_build_plugin(CrvDigisFromArtdaqFragments art::module
-  REG_SOURCE src/CrvDigisFromArtdaqFragments_module.cc
-  LIBRARIES REG
-    Offline::DAQ
-    Offline::CRVConditions
-    Offline::DataProducts
-    Offline::ProditionsService
-    Offline::RecoDataProducts
-    artdaq-core-mu2e::Data
-    artdaq-core-mu2e::Overlays
-)
-
 cet_build_plugin(CrvDigisFromArtdaqFragmentsFEBII art::module
   REG_SOURCE src/CrvDigisFromArtdaqFragmentsFEBII_module.cc
   LIBRARIES REG
@@ -230,17 +203,6 @@ cet_build_plugin(CrvDigisFromArtdaqFragmentsFEBII art::module
     Offline::CRVConditions
     Offline::DataProducts
     Offline::ProditionsService
-    Offline::RecoDataProducts
-    artdaq-core-mu2e::Data
-    artdaq-core-mu2e::Data_dict
-    artdaq-core-mu2e::Overlays
-)
-
-cet_build_plugin(CrvGRdataFromArtdaqFragments art::module
-  REG_SOURCE src/CrvGRdataFromArtdaqFragments_module.cc
-  LIBRARIES REG
-    Offline::DAQ
-    Offline::DataProducts
     Offline::RecoDataProducts
     artdaq-core-mu2e::Data
     artdaq-core-mu2e::Data_dict

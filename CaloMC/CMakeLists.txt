@@ -1,13 +1,12 @@
 cet_make_library(
     SOURCE
-      src/CaloNoiseSimGenerator.cc
       src/CaloPhotonPropagation.cc
-      src/CaloWFExtractor.cc
       src/ShowerStepUtil.cc
       src/CaloDigiWrapper.cc
       src/CaloDigiWrapperCollection.cc
     LIBRARIES PUBLIC
       
+      Offline::ConfigTools
       Offline::CalorimeterGeom
       Offline::GeometryService
       Offline::Mu2eUtilities
@@ -83,6 +82,16 @@ cet_build_plugin(CaloShowerUpdater art::module
       Offline::CaloMC
       
       Offline::MCDataProducts
+)
+
+cet_build_plugin(CaloEntrantTruthMaker art::module
+    REG_SOURCE src/CaloEntrantTruthMaker_module.cc
+    LIBRARIES REG
+
+      Offline::CalorimeterGeom
+      Offline::GeometryService
+      Offline::MCDataProducts
+      Offline::RecoDataProducts
 )
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/fcl/prolog.fcl ${CURRENT_BINARY_DIR} fcl/prolog.fcl)
