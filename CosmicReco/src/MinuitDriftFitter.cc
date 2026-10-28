@@ -219,14 +219,16 @@ void DoDriftTimeFit(
   ROOT::Minuit2::MnMigrad migrad(fit, params, mnStrategy);
 
   if (mnprecision > 0) {
-    migrad.State().SetPrecision(mnprecision);
+    // 2026-09-21 PM migrad.State().SetPrecision(mnprecision);
+    migrad.SetPrecision(mnprecision);
   }
 
   // Do first fit stage with fixed drift res
   // and minimal t0
   fit.setFixedT0(true);
   fit.setFixedDriftRes(true,driftres);
-  migrad.State().Fix(4);
+  // migrad.State().Fix(4);
+  migrad.Fix(4);
   ROOT::Minuit2::FunctionMinimum temp_min = migrad(0, mntolerance);
   ROOT::Minuit2::MnUserParameters const& temp_results = temp_min.UserParameters();
   for (size_t i=0;i<4;i++){
@@ -239,7 +241,8 @@ void DoDriftTimeFit(
   pars[4] = fit.averageT0(pars);
   fit.setFixedT0(false);
   fit.setFixedDriftRes(false);
-  migrad.State().Release(4);
+  // migrad.State().Release(4);
+  migrad.Release(4);
 
   // Define Minimization method as "MIGRAD" (see minuit documentation)
   ROOT::Minuit2::FunctionMinimum min = migrad(0, mntolerance);
