@@ -38,7 +38,6 @@ public:
     fhicl::Atom<bool>                                   usePBT             { Name("UseProtonBunchTime"), Comment("Use the proton bunch time for T0") };
     fhicl::Atom<std::string>                            processorStrategy  { Name("processorStrategy"),  Comment("Digi reco processor name") };
     fhicl::Atom<double>                                 maxChi2Cut         { Name("maxChi2Cut"),         Comment("Chi2 cut for keeping reco digi") };
-    fhicl::Atom<double>                                 globalDt           { Name("globalDt"),           Comment("<T(cal)-T(trk)>") };
     fhicl::Atom<int>                                    maxPlots           { Name("maxPlots"),           Comment("Maximum number of waveform plots") };
     fhicl::Atom<int>                                    diagLevel          { Name("diagLevel"),          Comment("Diagnosis level") };
   };
@@ -51,7 +50,6 @@ public:
       usePBT_            (config().usePBT()),
       processorStrategy_ (config().processorStrategy()),
       maxChi2Cut_        (config().maxChi2Cut()),
-      globalDt_          (config().globalDt()),
       maxPlots_          (config().maxPlots()),
       diagLevel_         (config().diagLevel()) {
     produces<CaloRecoDigiCollection>();
@@ -92,7 +90,6 @@ private:
   art::ProductToken<ProtonBunchTime> pbttoken_;
   const std::string processorStrategy_;
   double maxChi2Cut_;
-  double globalDt_;
   int maxPlots_;
   int diagLevel_;
   std::unique_ptr<CaloWaveformProcessor> waveformProcessor_;
@@ -107,29 +104,22 @@ void CaloRecoDigiMaker::produce(art::Event& event) {
   if (diagLevel_ > 0)
     std::cout << "[CaloRecoDigiMaker::produce] begin" << std::endl;
 
+  const auto& caloDigisH = event.getValidHandle(caloDigisToken_);
   auto recoCaloDigiColl = std::make_unique<CaloRecoDigiCollection>();
 
-  try {
-    const auto& caloDigisH = event.getValidHandle(caloDigisToken_);
-    double pbtOffset = 0;
-    if (usePBT_) {
-      auto pbtH = event.getValidHandle(pbttoken_);
-      const ProtonBunchTime& pbt(*pbtH);
-      pbtOffset = pbt.pbtime_;
-    }
-  
-    mu2e::CalCalib const& calCalib = calCalibHandle_.get(event.id());
-    EventTiming const& eventTiming = eventTimingHandle_.get(event.id());
-    pbtOffset -= eventTiming.caloTrackerTimeOffset();
+  double pbtOffset = 0;
+  if (usePBT_) {
+    auto pbtH = event.getValidHandle(pbttoken_);
+    const ProtonBunchTime& pbt(*pbtH);
+    pbtOffset = pbt.pbtime_;
+  }
 
-    extractRecoDigi(caloDigisH, *recoCaloDigiColl, pbtOffset, calCalib);
-  }
-  catch (...) {
-    if(diagLevel_ > 0) {
-      std::cout << "no digi collection\n";
-    }
-  }
-  
+  mu2e::CalCalib const& calCalib = calCalibHandle_.get(event.id());
+  EventTiming const& eventTiming = eventTimingHandle_.get(event.id());
+  pbtOffset -= eventTiming.caloTrackerTimeOffset();
+
+  extractRecoDigi(caloDigisH, *recoCaloDigiColl, pbtOffset, calCalib);
+
   event.put(std::move(recoCaloDigiColl));
 
   if (diagLevel_ > 0)

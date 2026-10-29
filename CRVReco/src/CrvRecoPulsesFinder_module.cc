@@ -85,7 +85,6 @@ namespace mu2e
       fhicl::Atom<art::InputTag> protonBunchTimeTag{Name("protonBunchTimeTag"), Comment("ProtonBunchTime producer"),"EWMProducer"};
       fhicl::Atom<bool> useTimeOffsetDB{Name("useTimeOffsetDB"), Comment("apply time offsets from the DB")}; //true
       fhicl::Atom<float> timeOffsetScale{Name("timeOffsetScale"), Comment("scale factor for time offsets from database (use 1.0, if measured values)")}; //1.0
-      fhicl::Atom<float> globalDt{Name("globalDt"), Comment("<T(CRV)-T(tracker)>, ns; default=0")}; //1.0
       fhicl::Atom<bool> ignoreChannels{Name("ignoreChannels"), Comment("ignore channels that have status 2 (bit 1) in CRVstatus DB")}; //true
     };
 
@@ -117,7 +116,6 @@ namespace mu2e
 
     bool  _useTimeOffsetDB;
     float _timeOffsetScale;
-    float _globalDt;
 
     bool  _ignoreChannels;
 
@@ -150,7 +148,6 @@ namespace mu2e
     _protonBunchTimeTag(conf().protonBunchTimeTag()),
     _useTimeOffsetDB(conf().useTimeOffsetDB()),
     _timeOffsetScale(conf().timeOffsetScale()),
-    _globalDt(conf().globalDt()),
     _ignoreChannels(conf().ignoreChannels())
   {
     produces<CrvRecoPulseCollection>(_NZSdata?"NZS":"");
@@ -317,7 +314,7 @@ namespace mu2e
       {
         //the TDC times were recorded with respect to the event window start.
         //need to shift the times back to the original time scale (i.e. microbunch time)
-        double pulseTime   = _makeCrvRecoPulses->GetPulseTimes().at(j) + TDC0time + timeOffset-_globalDt;
+        double pulseTime   = _makeCrvRecoPulses->GetPulseTimes().at(j) + TDC0time + timeOffset;
         double LEtime      = _makeCrvRecoPulses->GetLEtimes().at(j) + TDC0time + timeOffset;
         float  PEs         = _makeCrvRecoPulses->GetPEs().at(j);
         float  PEsPulseHeight = _makeCrvRecoPulses->GetPEsPulseHeight().at(j);
